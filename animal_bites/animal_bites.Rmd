@@ -1,0 +1,242 @@
+---
+title: "Animal bites analysis"
+author: "Will Canniford"
+output: 
+  html_document:
+    toc: true
+---
+***
+## Introduction
+### Context
+
+In the United States, animal bites are often reported to law enforcement (such as animal control). The main concern with an animal bite is that the animal may be rabid. This dataset includes information on over 9,000 animal bites which occurred near Louisville, Kentucky from 1985 to 2017 and includes information on whether the animal was quarantined after the bite occurred and whether that animal was rabid.
+
+### Content
+Attributes of animal bite incidents reported to and investigated by Louisville Metro Department of Public Health and Wellness. Personal/identifying data has been removed. This dataset is a single .csv with the following fields.
+
+    bite_date: The date the bite occurred
+    SpeciesIDDesc: The species of animal that did the biting
+    BreedIDDesc: Breed (if known)
+    GenderIDDesc: Gender (of the animal)
+    color: color of the animal
+    vaccination_yrs: how many years had passed since the last vaccination
+    vaccination_date: the date of the last vaccination
+    victim_zip: the zipcode of the victim
+    AdvIssuedYNDesc: whether advice was issued
+    WhereBittenIDDesc: Where on the body the victim was bitten
+    quarantine_date: whether the animal was quarantined
+    DispositionIDDesc: whether the animal was released from quarantine
+    head_sent_date: the date the animal’s head was sent to the lab
+    release_date: the date the animal was released
+    ResultsIDDesc: results from lab tests (for rabies)
+
+***
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = 'center')
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(stringr)
+library(lubridate)
+library(gridExtra)
+```
+
+## Load the data
+```{r eval=FALSE}
+# Packages used and loaded
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(stringr)
+library(lubridate)
+library(gridExtra)
+```
+
+```{r, message=FALSE, warning=FALSE}
+full_data <- read_csv('./input/Health_AnimalBites.csv')
+glimpse(full_data)
+```
+  
+  
+***
+## Bites vs. Time
+
+Form the summary of bite_date I can see that there is clearly an input mistake, unless someone has written a very confident prediction algorithm! Given our data was collected up until 2017, I'll assume that everything higher that 2018 is a mistake of some kind. Let's have a look...
+
+```{r}
+full_data$bite_date[which(full_data$bite_date > ymd('2018-01-01'))]
+```
+  
+Not ideal as there doesn't appear to be any obvious input problem. Perhaps the 2201 is meant to be 2012, and the 2021 is meant to be 2012 as well? For the sake of this particular analysis of bite dates I'll simply remove them for plotting purposes. 
+
+```{r}
+full_data %>% 
+  filter(bite_date < ymd('2018-01-01')) %>% 
+    ggplot(aes(year(bite_date))) + 
+    geom_bar() + 
+    labs(x = 'Year', y = 'Count') 
+```
+  
+There is definitely a huge cluster of bite records after 2010. This is probably due to an increase in the recording of the events, or a change in the method of recording, rather than a sudden jump in the number of incidents.
+  
+***
+
+## Considering the time of year
+
+```{r}
+month_data <- full_data %>%
+  filter(bite_date < ymd('2018-01-01')) %>% 
+  group_by(month = month(bite_date)) %>% 
+  summarise(n_incidents = n()) %>%
+  transmute(month = ymd(paste('2018', month, '01', sep = '-')), n_incidents)
+
+
+month_data %>% 
+    ggplot(aes(x = month, y = n_incidents, fill = n_incidents)) + 
+    geom_col() + 
+    labs(x = 'Month', y = 'Incident count', title = "Number of incidents sorted by month") +
+    scale_x_date(date_labels = '%b', date_breaks = '2 month', date_minor_breaks = '1 month') + 
+    scale_fill_continuous(name = '# incidents')
+```
+
+As you can see from this plot, it is clear to see that there are more incidents during the summer months. I would assume that this is down to higher exposure to potential incidents rather than a higher rate. Although, this is pure speculation. 
+
+```{r}
+full_data %>% 
+  filter(bite_date < ymd('2018-01-01')) %>% 
+    ggplot(aes(wday(bite_date, label = TRUE, week_start = 1), fill = ..count..)) + 
+    geom_bar() + 
+    labs(x = 'Day of week', y = 'Incident count', title = "Number of incidents sorted by day of week") + 
+    scale_fill_continuous(name = '# incidents')
+```
+  
+The weekend seems to pose a higher risk of incident as well. Following my speculation from earlier this is probably a result of higher opportunity rather than higher rate. The evidence for that comparison with day of week vs. month impact is much less, however, as the counts are much more equal when looking at day of the week.
+  
+***
+
+## Species analysis 
+Perhaps instead of staying indoors throughout the weekends and summer, you could just be on the lookout for particular species. 
+
+```{r}
+full_data %>% group_by(SpeciesIDDesc) %>%
+  summarise(count = n()) %>% filter(!is.na(SpeciesIDDesc)) %>%
+  arrange(desc(count)) -> species_counts
+
+print(species_counts)
+```
+  
+If we remove the NAs from the column then we can see below that the dog reigns supreme over the bite kingdom, followed by cat, and then the bat. 
+
+```{r}
+species_counts %>%
+  ggplot(aes(x = reorder(SpeciesIDDesc, desc(count)), y = count, fill = count)) +     
+  geom_col() + 
+  scale_fill_continuous(low = 'red', high = 'yellow', name = 'Count') + 
+  labs(x = 'Species', y = 'Count of recorded bites')
+
+```
+  
+***
+## Breed analysis
+While the species overview hasn't been particularly positive towards dogs, perhaps the breed analysis will offer some redemption for dog lovers, assuming their favourite isn't on the list
+
+```{r, message=FALSE, warning=FALSE}
+breed_bites <- full_data %>% 
+  group_by(BreedIDDesc) %>%
+  summarise(count = n()) %>% 
+  filter(!is.na(BreedIDDesc)) %>%
+  arrange(desc(count)) %>% 
+  top_n(10) 
+
+print(breed_bites)
+```
+  
+A comparison among breeds show that there is a clear prominence of bites from pit bulls.
+
+```{r}
+breed_bites %>%
+  ggplot(aes(x = reorder(BreedIDDesc, desc(count)), y = count, fill = count)) +     
+  geom_col() + 
+  scale_fill_continuous(low = 'red', high = 'yellow', name = 'Count') + 
+  labs(x = 'Breed', y = 'Count of recorded bites') + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+```
+  
+***
+ 
+## First the bite, then the test
+
+```{r}
+table(full_data$ResultsIDDesc)
+```
+  
+Just four positive results for rabies out of all the bites.  
+We can further investigate which animals have been tested, and if those animals have a particularly high prominence of rabies. 
+
+```{r}
+full_data %>% 
+  filter(!is.na(ResultsIDDesc), !is.na(SpeciesIDDesc)) %>% 
+  group_by(SpeciesIDDesc, ResultsIDDesc) %>%
+  summarise(count = n()) %>%
+  spread(ResultsIDDesc, count) %>%
+  filter(POSITIVE > 0) %>%
+  mutate(pos_perc = round(POSITIVE / (POSITIVE + NEGATIVE) * 100, 2))
+``` 
+  
+Of those known results for the test, both bats and dogs are roughly 2% positive. Note the number of unknown for dogs in comparison to bats. It must be much more common practice to take the test and get the results if you are bitten by a bat when compared to a dog bite. 
+
+### Vaccination and test choice
+
+```{r}
+full_data %>% 
+  filter(SpeciesIDDesc == 'DOG', !is.na(ResultsIDDesc)) %>%
+  group_by(is.na(vaccination_date), ResultsIDDesc) %>%
+  summarise(count = n()) %>%
+  spread(ResultsIDDesc, count, fill = 0) %>%
+  mutate(test_perc = round((NEGATIVE + POSITIVE) / (NEGATIVE + POSITIVE + UNKNOWN) * 100, 2))
+```
+  
+If we are right that unknown means that no test was taken then we can see that people tended to opt for the test if the dog hadn't be vaccinated much more frequently than if they knew that the dog had been vaccinated. 
+
+
+***
+
+## Bite position
+```{r, message=FALSE, warning=FALSE}
+full_data %>% group_by(SpeciesIDDesc, WhereBittenIDDesc) %>%
+  filter(!is.na(WhereBittenIDDesc), !is.na(SpeciesIDDesc)) %>%
+  summarise(count = n()) %>%
+  spread(WhereBittenIDDesc, count, fill = 0) %>%
+  mutate(BODY_PROP = BODY/(BODY+HEAD), TOTAL = BODY + HEAD) %>%
+  select(BODY_PROP, TOTAL) %>%
+  ggplot() + 
+    geom_col(aes(x = reorder(SpeciesIDDesc, desc(BODY_PROP)), y = BODY_PROP, colour = TOTAL), width = .02) +
+    geom_point(aes(x = reorder(SpeciesIDDesc, desc(BODY_PROP)), y = BODY_PROP, size = TOTAL, colour = TOTAL)) +
+  coord_flip(ylim = c(.6, 1)) + 
+  theme(legend.position = 'bottom') + 
+  labs(x = 'Species', y = 'Proportion of bites on body to head')
+```
+  
+Horses have the highest proportion of bites that are recorded as the head, however they have a very small sample size. Of those bites where we know the position of the bite, the dog appears to have a high head proportion with almost 1 in 5 cases being face/head based. Perhaps this is people bending down to greet an unfriendly dog? 
+Bats and cats remain roughly the same level of head bites where we know the location. 
+
+***
+## Aggressive males
+```{r}
+ggplot(full_data, aes(x = as.factor(GenderIDDesc))) + 
+  geom_bar() + 
+  labs(x = 'Gender', y = 'Count')
+```
+  
+The prominent gender of the biters is male here, but again with a surprising amount of NA values throughout the data set. 
+
+***
+## Conclusions
+* Dogs appear to be the main culprits here, with the most bites, and a case of rabies.
+They also seem to target the face more than other animals, making them perhaps even more dangerous than animals with high numbers of bites. 
+  + Within dogs it would be interesting to see the impact of size of dog, as many of the dogs with the most bites are larger, but there were some noticeable smaller dogs in there as well. 
+* If someone got bitten by an animal that they knew had been vaccinated then they were less likely to go for a test for rabies. 
+
+  
+If you have any further suggestions or advice, then I would love to hear it! 

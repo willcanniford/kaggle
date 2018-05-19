@@ -1,0 +1,271 @@
+---
+title: "Craft Beer Exploration in R"
+author: "Will Canniford"
+output: 
+  html_document:
+    toc: true
+---
+
+```{r, echo=FALSE, message=FALSE, error=FALSE}
+library(tidyverse)
+library(readr)
+library(purrr)
+library(ggthemes)
+```
+
+*** 
+
+## Introduction
+Below is some column information that was given with the data set. There are some missing descriptions so I will investigate further once I have loaded the data in. 
+
+### Beer data
+__abv__: The alcoholic content by volume with 0 being no alcohol and 1 being pure alcohol  
+__ibu__: International bittering units, which describe how bitter a drink is  
+__name__: The name of the beer   
+__style__: Beer style (lager, ale, IPA, etc.)  
+__brewery_id__: Unique identifier for brewery that produces this beer  
+__ounces__: Size of beer in ounces  
+  
+### Breweries data
+__brewery_id__: Unique identifier for brewery that produces this beer  
+__name__: Name of the brewery  
+__city__: City that the brewery is located in  
+__state__: State that the brewery is located in  
+
+The thing that immediately stands out is that we have a key that we could use to join the data: `brewery_id`.
+
+***
+## Reading and cleaning the data
+Read in the data that we have available: 
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+beers <- read_csv('./input/beers.csv')
+breweries <- read_csv('./input/breweries.csv')
+```
+
+Let's have a closer look at the structure of the data. 
+```{r}
+glimpse(beers)
+```
+
+Immediately we can see that we have two columns that we don't have prior information for. Let's delve into these first and see whether we can work out what information they hold, if any. 
+
+```{r}
+print(nrow(beers))
+summary(beers$X1)
+table(beers$X1 == as.integer(beers$X1))
+length(unique(beers$X1))
+```
+It is very much looking like this initial column is simply a row number of sorts. 
+
+```{r}
+print(nrow(beers))
+summary(beers$id)
+table(beers$id == as.integer(beers$id))
+length(unique(beers$id))
+```
+The id column has a similar role. Perhaps this one would act more as a key to another data set, but unfortunately we don't have that. 
+
+```{r}
+glimpse(breweries)
+```
+
+It looks like the brewery_id hasn't been labelled as such and is indicated through the unnamed column at the beginning that has been given the default of `X1`. I could rename it, but instead I will explicitly specify when I join the data next. 
+
+
+### Joining the data
+Before I join, I'll just check that all the rows of beers have a `brewery_id`. 
+```{r}
+map_df(beers, ~ sum(is.na(.)))
+```
+
+That's good, it seems we won't be missing any brewery information for our beers. 
+
+```{r}
+beers_breweries <- beers %>%
+  select(-X1, -id) %>% # We don't need these columns
+  left_join(breweries, by = c('brewery_id' = 'X1')) # Specify the columns to join on: left_hand_key = right_hand_key
+
+glimpse(beers_breweries)
+```
+
+### Final clean of the data
+You can see that when we joined the data it created two name columns. That is because a name column existed in both data frames when we joined, so `dplyr::left_join` adds a suffix so we know the origin of the column. The left hand data frame has a default suffix of `.x` (beers in our case) while the right hand side data has a default value of `.y` (breweries in our case). You can specify what you want these suffixes to be when you perform the join using the `suffix` argument as such: 
+```{r, eval=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+beers_breweries <- beers %>%
+  select(-X1, -id) %>% 
+  left_join(breweries, by = c('brewery_id' = 'X1'), 
+            suffix = c('_beer', '_breweries')) # Specify the suffixes
+```
+
+Unfortunately this doesn't give us full control over the column names, so instead of rejoining the data I'll just rename the columns. 
+
+```{r}
+beers_breweries <- beers_breweries %>%
+  rename(beer = name.x, # beer name
+         brewery = name.y) # brewery name
+```
+
+#### Unit conversions
+One last thing that I would like to do is to change some of the units to make them more intuitive for my understanding.  
+`abv` would be easier to read if it was multiplied up, and `ounces` isn't how I would normally measure beer (English) so I will create a new column with the conversion to milliliter so that if I ever have to use the quantity measure it will be in units that I have a better intuitive understanding of.
+
+```{r}
+beers_breweries <- beers_breweries %>%
+  mutate(abv = abv * 100, 
+         ml = round(ounces * 28.4131, 2)) # 28.4131 ml per fluid ounce
+
+glimpse(beers_breweries)
+```
+
+Ok, that looks good to me, let's get started.  
+
+***
+
+## Insights
+### Breweries by state
+To answer the question _"Which state has the most breweries?"_ we actually don't need our new cleaned and joined data. We can just use the original breweries data that was provided to us. 
+
+Let's start by just getting the top 20 states with the most breweries in them. 
+```{r message=FALSE, error=FALSE, warning=FALSE}
+top_20_states <- breweries %>% 
+  group_by(state) %>%
+  summarise(n_breweries = n()) %>%
+  arrange(desc(n_breweries)) %>%
+  top_n(20)
+```
+
+We can then plot these to make some more sense of the comparison between the states.   
+
+```{r}
+# Calculate mean average number of breweries
+avg_breweries <- breweries %>%
+  group_by(state) %>% 
+  summarise(n = n()) %>% 
+  summarise(mean = mean(n)) %>%
+  `$`(mean)
+
+ggplot(data = top_20_states, aes(x = reorder(state, -n_breweries), y = n_breweries)) +
+  geom_col( fill = '#4B77BE') + 
+  geom_hline(yintercept = avg_breweries, color = '#DC3023', linetype = 2, size = 1) + # add horizontal line for average number
+  theme_minimal() + 
+  labs(x = "State", y = "Number of breweries", title = "Number of craft beer breweries by State") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) # rotate the axis text
+```
+
+***
+### Breweries by city
+```{r message=FALSE, error=FALSE, warning=FALSE}
+cities_count <- breweries %>% 
+  group_by(city) %>%
+  summarise(n_breweries = n()) %>%
+  arrange(desc(n_breweries)) %>%
+  top_n(20)
+```
+
+```{r}
+# Calculate mean average number of breweries
+avg_breweries_city <- breweries %>%
+  group_by(city) %>% 
+  summarise(n = n()) %>% 
+  summarise(mean = mean(n)) %>%
+  `$`(mean)
+
+ggplot(data = cities_count, aes(x = reorder(city, -n_breweries), y = n_breweries)) +
+  geom_col( fill = '#03A678') + 
+  geom_hline(yintercept = avg_breweries_city, color = '#FFA400', size = 1) + # add horizontal line for average number
+  theme_minimal() + 
+  labs(x = "City", y = "Number of breweries", title = "Number of craft beer breweries by City") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) # rotate the axis text
+```
+
+***
+
+### Breweries by alcohol content 
+Let's have a look at those breweries that have a high alcohol content so you know where to go for your strong craft beer. I have limited the breweries to those that have produced at least 1 beer. 
+
+```{r}
+high_abv <- beers_breweries %>%
+  group_by(brewery) %>%
+  summarise(avg_abv = mean(abv, na.rm = T), n_beers = n()) %>%
+  filter(n_beers > 1) %>%
+  arrange(desc(avg_abv)) %>%
+  top_n(10, avg_abv) %>%
+  inner_join(breweries, by=c('brewery' = 'name')) %>%
+  transmute(brewery, avg_abv, n_beers, location = paste(city, state, sep = ', '))
+
+print(high_abv)
+```
+  
+All of these breweries have a high average alcohol content for their beers. Perhaps if you're looking for a strong craft beer you should head to Boulder that boasts two of the strongest craft brewers in the USA. 
+
+***
+### Average alcohol content by state
+Are there certain states that favour the stronger beers? 
+
+```{r, message=FALSE, warning=FALSE, error=FALSE}
+beers_breweries %>%
+  group_by(state) %>%
+  mutate(mean_abv = mean(abv, na.rm = T)) %>%
+ggplot(aes(x = reorder(state, -mean_abv), y = abv, fill = mean_abv)) + 
+  geom_boxplot() + 
+  labs(x = "State", y = "Beer ABV", title = "Beer ABV percentages by State") + 
+  scale_y_continuous(breaks = seq(0,12, 4)) + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  scale_fill_continuous(low = '#edf8b1', high = '#2c7fb8', name = "Mean ABV")
+```
+  
+Looks like the states with the strongest beers are Nevada, Washington DC and Kentucky. 
+
+*** 
+### Most popular beer styles
+```{r}
+beers_breweries %>% 
+  group_by(style) %>%
+  summarise(count = n()) %>%
+  filter(count > 25) %>%
+  ggplot(aes(reorder(style, count), count)) + geom_col(fill = '#F9690E') + 
+  theme_fivethirtyeight() +
+  coord_flip()
+```
+  
+It looks like the most popular craft beers are American IPA, APA and Red Ale in the medal positions. 
+
+***
+### Style by ABV
+Let's find out the strongest styles of those most popular beer styles, and just how strong those styles are. 
+```{r}
+avg_abv <- mean(beers_breweries$abv, na.rm = T)
+beers_breweries %>%
+  select(style, abv) %>%
+  filter(complete.cases(.)) %>%
+  group_by(style) %>%
+  summarise(count = n(), mean_abv = mean(abv)) %>% filter(count > 25) %>%
+  ggplot(aes(reorder(style, mean_abv), mean_abv)) + geom_col(aes(fill = count)) + theme_minimal() + coord_flip() + geom_hline(yintercept = avg_abv, color = 'red') + scale_fill_continuous(low = '#e7e3f4', high= '#756bb1', name = 'Total beers') + labs(y = 'Average ABV', x = 'Beer style')
+```
+  
+American Double / Imperial IPA appears to be the strongest on average quite comfortably, with the average strength of the craft beers being pulled up by the most popular style, American IPA. 
+
+***
+### ABV vs. IBU
+```{r warning=FALSE, error=FALSE, message=FALSE}
+beers_breweries %>%
+  select(ibu, abv) %>%
+  filter(complete.cases(.)) %>%
+  ggplot(aes(abv, ibu)) + 
+  geom_point(alpha = .5, shape = 1, size = 1) +
+  geom_smooth(method = lm, color = '#DC3023', se = FALSE, size = 1) + 
+  theme_minimal()
+```
+  
+There seems to be a fairly clear relationship between ibu and abv for those beers where both the measures are available. 
+
+***
+## Conclusions
+- Colorado, California and Michigan are the states that contain the most craft beer breweries
+- Portland is the busiest city for craft beer lovers and brewers 
+- Head to Boulder, CO to visit some of the strongest craft beer brewers around 
+- Nevada, Washington DC and Kentucky breweries brew the strongest craft beers
+- American IPA is the most popular style of craft beer as well as one of the strongest on average 
+- American Double / Imperial IPA is the beer style for those that like their beer strong
+- There appears to be a clear relationship between the bitterness and alcohol strength of these craft beers 

@@ -1,0 +1,296 @@
+---
+title: "Chocolate Bar Ratings: Data Visualisations"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = 'center')
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(stringr)
+library(lubridate)
+```
+
+***
+
+## Load and clean the data
+```{r eval=FALSE}
+# Packages used and loaded
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(stringr)
+library(lubridate)
+```
+  
+The data here is provided in a csv file and kept in the input directory, which is inside the current working directory. I just simply load it here using the `read_csv` function. 
+
+```{r message = FALSE}
+full_data <- read_csv('./input/flavors_of_cacao.csv')
+
+# Check the dimensions of the data
+dim(full_data)
+
+# Remove spaces from the column names
+names(full_data) <- tolower(gsub(pattern = '[[:space:]+]', '_', names(full_data)))
+names(full_data)
+```
+
+
+```{r}
+# Look at the first few rows of the data
+head(full_data)
+
+# Remove that first row that seems to be a duplication of the headers
+full_data <- full_data[-1,]
+```
+
+```{r}
+# Remove the % sign from the cocoa percent column
+full_data$cocoa_percent <- sapply(full_data$cocoa_percent, function(x) gsub("%", "", x))
+
+# Retype the columns
+full_data <- type_convert(full_data)
+```
+
+Removing the % sign from the cocoa percent column allows us to convert it to a numeric type which will help in further analysis
+
+```{r}
+# Have a look at the summary of the new data with the new column types
+summary(full_data)
+```
+
+
+
+```{r}
+# Mutate a new column that converts the year into a date type 
+full_data <- full_data %>%
+  mutate(review_date = ymd(paste(review_date, 1, 1, sep="-")))
+
+# Generate a table of average ratings by year
+avg_ratings <- full_data %>% 
+  group_by(review_date) %>% 
+  summarise(avg_rating = mean(rating), n_ratings = n())
+```
+
+***
+
+## Visualising the data
+Distribution of ratings faceted by year
+```{r}
+ggplot(full_data, aes(x = rating, fill = as.factor(review_date))) + 
+  geom_density(alpha = .5) + 
+  facet_wrap(~ as.factor(review_date)) + 
+  guides(fill = FALSE) + labs(x = 'Rating', y = 'Density')
+```
+
+While the peaks throughout the years seems to remain fairly constant, you can see that the most recent year doesn't have the spread of the first years. 
+
+```{r}
+standard_deviations <- 
+  full_data %>% group_by(review_date) %>%
+  summarise(count = n(), avg = mean(rating), sd = sd(rating)) 
+
+standard_deviations
+```
+
+We seem to see that the standard deviation of rating seems to be decreasing as time passes. 
+
+```{r}
+
+standard_deviations %>%
+  ggplot(aes(review_date, sd)) + 
+  geom_point(aes(size = count)) + 
+  geom_line(size = .5) + 
+  theme_minimal() + 
+  scale_x_date(date_breaks = '1 year', date_labels = '%Y') + 
+  scale_size(breaks = seq(0,250,50), name = 'Number of ratings') + 
+  labs(x = 'Date', 
+       y = 'Standard deviation of ratings')
+```
+Upon visualisation of the data we can see that 2017 might simply have a smaller spread due to the smaller number of ratings that have been taken in that year. As the number of ratings taken in the year increases, we say see it rise to near that of the previous 6/7 years, although there does appear to be a definite downward trend, implying that reviewers are giving less extreme scores. 
+
+```{r}
+low_scores <- full_data %>% group_by(review_date) %>%
+  summarise(less_than_2.5 = sum(rating < 2.5), count = n(), perc = round(less_than_2.5 / count, 2))
+
+low_scores
+```
+
+Having a closer look, by year, at the reviews that were given a rating of less than 2.5, you can clearly see that the number of those poor scores is going down, despite the number of reviews going up! 18% of reviews in 2006 (13/72) where less than 2.5, while only 5 reviews fell below that threshold since 2015!
+  
+  
+```{r}
+low_scores %>%
+  ggplot() + geom_line(aes(review_date, perc * 100)) + 
+  theme_minimal() + 
+  scale_x_date(date_breaks = '1 year', date_labels = '%Y') + 
+  labs(x = 'Date', 
+       y = 'Percentage',
+       title = 'Percentage of scores below 2.5 by year')
+
+```
+  
+### Ratings over time
+Are reviewers getting more generous in recent years?
+```{r}
+full_data %>%
+  ggplot(aes(review_date, rating)) + 
+  geom_count(aes(colour = ..n..)) + 
+  geom_line(data = avg_ratings, aes(review_date, avg_rating), colour = 'red') +
+  scale_x_date(date_breaks = '1 year', date_labels = '%Y') + 
+  scale_size_continuous(name = 'Count') + scale_color_continuous(name = 'Count') + 
+  coord_cartesian(ylim = c(0,5)) + 
+  theme_minimal() + labs(x = 'Review year', y = 'Rating')
+```
+
+Reviewers don't appear to be more generous, or as harsh, considering our previous analysis. 
+  
+### Company location
+Does the company location make a difference to the quality of the product? 
+```{r message = FALSE}
+full_data %>%
+  group_by(company_location) %>% filter(n() > 10) %>% mutate(avg = mean(rating)) %>%
+  ggplot() + 
+  geom_boxplot(aes(reorder(company_location, avg), rating, fill = avg)) + 
+  scale_fill_continuous(low = '#ffffcc', high = '#fc4e2a') + 
+  coord_flip() + 
+  theme_minimal() + 
+  labs(x = 'Company Location', y = 'Rating')
+```
+  
+### Master makers
+Are there masterful makers that can do no wrong? 
+```{r warning = FALSE, message=FALSE}
+# Split the maker from the company_maker column before choosing those makers that have at least 3 reviewed products
+colnames(full_data)[1] <- 'company_maker'
+makers <- full_data %>%
+  rowwise %>%
+  mutate(maker = str_match(company_maker, '\\((.*)\\)')[2]) %>% 
+  filter(!is.na(maker)) %>% group_by(maker) %>% filter(n() >= 3) %>% mutate(avg = mean(rating)) 
+
+ggplot(makers) + 
+  geom_boxplot(aes(x = reorder(maker, rating, FUN = mean), y = rating, fill = avg)) + 
+  labs(x = 'Maker', y = 'Rating') + 
+  coord_flip() + 
+  theme_minimal()
+
+```
+
+  
+### Looking at Company records
+```{r warning= FALSE, message = FALSE}
+
+# I split the company/maker column again and then filter by companies that have at least 10 reviews to their name
+companies <- full_data %>%
+  rowwise() %>%
+  mutate(company = str_trim(str_split(company_maker, '\\(')[[1]][1])) %>%
+  group_by(company) %>% 
+  filter(n() > 10) %>% 
+  mutate(avg = mean(rating))
+
+# By plotting the count of reviews for certain values we are also able to see the distribution of 
+# scores that a particular company has obtained 
+companies  %>%
+  ggplot(aes(x = reorder(as.factor(company), rating, FUN = mean), y = rating)) + 
+  geom_count(alpha = .1) + 
+  geom_point(aes(x = as.factor(company), y = avg, colour = avg)) + 
+  theme_minimal() + 
+  coord_flip() + 
+  labs(x = 'Company', y = 'Rating') + 
+  scale_color_continuous(name = 'Average rating', breaks = seq(3,4,.25)) + 
+  scale_size_continuous(name = 'Number of ratings', breaks = seq(0,14,2))
+```
+
+
+```{r warning=F, fig.width=11, fig.height=12, message = F}
+# Which of these companies are improving
+full_data %>%
+  rowwise() %>%
+  mutate(company = str_trim(str_split(company_maker, '\\(')[[1]][1])) %>%
+  group_by(company) %>% 
+  filter(n() > 10) %>% 
+  group_by(company, review_date) %>%
+  summarise(count = n(), avg = mean(rating)) %>%
+  ungroup() %>%
+  ggplot() + 
+    geom_point(aes(x = review_date, y = avg, size = count, colour = as.factor(company), alpha = 0.05)) +
+    geom_line(aes(x = review_date, y = avg, colour = as.factor(company))) + 
+    facet_wrap(~ company, ncol = 3) + 
+    scale_x_date(date_labels = '%Y', date_breaks = '2 year') + 
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+    guides(colour = FALSE) + labs(x = 'Year of review', y = 'Average rating') + 
+    scale_size_continuous(breaks = seq(4, 16, 2), name = 'Number of reviews') + 
+    scale_alpha(guide = F)
+
+```  
+  
+Some appear to have shown improvements, but such increases can probably just be put down to small number of reviews for a given year. To see whether the company is truly improving we would require a greater number of product reviews for the current year. 
+
+  
+### Cocoa percent and rating
+More cocoa = higher rating? 
+```{r}
+full_data %>%
+  ggplot(aes(x = cocoa_percent, y = rating)) +
+  geom_jitter(alpha = .75) + 
+  coord_cartesian(ylim = c(0,5)) +
+  labs(x = 'Cocoa percentage', y = 'Rating') + 
+  theme_minimal()
+```
+  
+### Broad bean origin
+```{r}
+# Look at the origins
+unique(full_data$broad_bean_origin)
+
+# Remove the ratings that don't have broad bean origins
+beans <- full_data %>% filter(!is.na(broad_bean_origin), !nchar(broad_bean_origin) < 2)
+
+# Most frequent broad bean origin
+beans %>% 
+  group_by(broad_bean_origin) %>% 
+  filter(n() > 10) %>% 
+  mutate(count = n()) %>%
+  ggplot(aes(x = reorder(broad_bean_origin, count))) + 
+  geom_bar() + 
+  coord_flip() + 
+  theme_minimal() + 
+  labs(x = 'Bean origin', y = 'Count')
+```
+
+```{r}
+# There doesn't appear to be any relationship between broad bean origin and rating however
+beans %>% 
+  group_by(broad_bean_origin) %>% 
+  filter(n() > 10) %>% 
+  mutate(count = n()) %>%
+  ggplot() + 
+  geom_boxplot(aes(x = broad_bean_origin, y = rating)) + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 75, hjust = 1)) + 
+  labs(x = 'Broad bean origin', y = 'Rating')
+```
+
+  
+### Companies and beans
+```{r fig.width=10 }
+# Use the subset with the most active companies to generate heatmap of interactions between companies and the bean origin
+companies %>% 
+  filter(!is.na(broad_bean_origin), !nchar(broad_bean_origin) < 2) %>%
+  group_by(company, broad_bean_origin) %>%
+  summarise(count = n()) %>%
+  filter(count > 0) %>%
+  ggplot() + 
+  geom_tile(aes(broad_bean_origin, company, fill = count)) + 
+  coord_equal() +
+  scale_fill_continuous(name = 'Count') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 5)) +
+  theme(axis.text.y = element_text(size = 5)) + 
+  labs(x = 'Broad bean origin', y = 'Company')
+```
+
+Thanks for taking the time to have a look at my work. Any comments/feedback welcome. 
