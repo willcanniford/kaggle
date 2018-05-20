@@ -3,7 +3,13 @@ title: "Craft Beer Exploration in R"
 author: "Will Canniford"
 output: 
   html_document:
+    number_sections: false
     toc: true
+    toc_depth: 6
+    highlight: tango
+    theme: yeti
+    code_folding: show
+    df_print: kable
 ---
 
 ```{r, echo=FALSE, message=FALSE, error=FALSE}
@@ -122,7 +128,8 @@ Ok, that looks good to me, let's get started.
 ***
 
 ## Insights
-### Breweries by state
+### Breweries { .tabset .tabset-pills }
+#### By state
 To answer the question _"Which state has the most breweries?"_ we actually don't need our new cleaned and joined data. We can just use the original breweries data that was provided to us. 
 
 Let's start by just getting the top 20 states with the most breweries in them. 
@@ -153,7 +160,7 @@ ggplot(data = top_20_states, aes(x = reorder(state, -n_breweries), y = n_breweri
 ```
 
 ***
-### Breweries by city
+#### By city
 ```{r message=FALSE, error=FALSE, warning=FALSE}
 cities_count <- breweries %>% 
   group_by(city) %>%
@@ -180,7 +187,7 @@ ggplot(data = cities_count, aes(x = reorder(city, -n_breweries), y = n_breweries
 
 ***
 
-### Breweries by alcohol content 
+#### By alcohol content 
 Let's have a look at those breweries that have a high alcohol content so you know where to go for your strong craft beer. I have limited the breweries to those that have produced at least 1 beer. 
 
 ```{r}
@@ -199,7 +206,8 @@ print(high_abv)
 All of these breweries have a high average alcohol content for their beers. Perhaps if you're looking for a strong craft beer you should head to Boulder that boasts two of the strongest craft brewers in the USA. 
 
 ***
-### Average alcohol content by state
+### State { .tabset .tabset-pills }
+#### Average alcohol content 
 Are there certain states that favour the stronger beers? 
 
 ```{r, message=FALSE, warning=FALSE, error=FALSE}
@@ -218,7 +226,8 @@ ggplot(aes(x = reorder(state, -mean_abv), y = abv, fill = mean_abv)) +
 Looks like the states with the strongest beers are Nevada, Washington DC and Kentucky. 
 
 *** 
-### Most popular beer styles
+### Beer style { .tabset .tabset-pills }
+#### Most popular 
 ```{r}
 beers_breweries %>% 
   group_by(style) %>%
@@ -232,7 +241,7 @@ beers_breweries %>%
 It looks like the most popular craft beers are American IPA, APA and Red Ale in the medal positions. 
 
 ***
-### Style by ABV
+#### By ABV
 Let's find out the strongest styles of those most popular beer styles, and just how strong those styles are. 
 ```{r}
 avg_abv <- mean(beers_breweries$abv, na.rm = T)
