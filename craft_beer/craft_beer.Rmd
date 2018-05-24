@@ -17,12 +17,13 @@ library(tidyverse)
 library(readr)
 library(purrr)
 library(ggthemes)
+library(caret)
 ```
 
 *** 
 
 ## Introduction
-Below is some column information that was given with the data set. There are some missing descriptions so I will investigate further once I have loaded the data in. 
+I'll start by showing column information that was given with the data set. There are some missing descriptions so I will investigate further once I have loaded the data in and we can have a look ourselves.  
 
 ### Beer data
 __abv__: The alcoholic content by volume with 0 being no alcohol and 1 being pure alcohol  
@@ -38,11 +39,11 @@ __name__: Name of the brewery
 __city__: City that the brewery is located in  
 __state__: State that the brewery is located in  
 
-The thing that immediately stands out is that we have a key that we could use to join the data: `brewery_id`.
+Immediately, it looks like we have a key that we could use to join the two tables together: `brewery_id`.
 
 ***
 ## Reading and cleaning the data
-Read in the data that we have available: 
+I'll read in the two tables. 
 ```{r, message=FALSE, error=FALSE, warning=FALSE}
 beers <- read_csv('./input/beers.csv')
 breweries <- read_csv('./input/breweries.csv')
@@ -53,44 +54,58 @@ Let's have a closer look at the structure of the data.
 glimpse(beers)
 ```
 
-Immediately we can see that we have two columns that we don't have prior information for. Let's delve into these first and see whether we can work out what information they hold, if any. 
+
+#### Mystery columns
+We can see that we have two columns that we don't have prior information for. Let's delve into these first and see whether we can work out what information they hold, if any. 
 
 ```{r}
+# How many rows are there in the data?
 print(nrow(beers))
+# Let's see a summary for the unknown column
 summary(beers$X1)
+# Let's check that they are all integers
 table(beers$X1 == as.integer(beers$X1))
+# How many unique values are there in the column?
 length(unique(beers$X1))
 ```
-It is very much looking like this initial column is simply a row number of sorts. 
+It looks to me as though this column `X1` is just an incremental counter for the data. 
 
 ```{r}
-print(nrow(beers))
+# Let's view some details about the `id` column for the beers data
 summary(beers$id)
+# Checking to see whether the column is entirely integers
 table(beers$id == as.integer(beers$id))
+# Check column length
 length(unique(beers$id))
 ```
-The id column has a similar role. Perhaps this one would act more as a key to another data set, but unfortunately we don't have that. 
+This `id` column has a similar role. It could act as a key to another data set, but we can't be sure. 
 
+#### Breweries
 ```{r}
 glimpse(breweries)
 ```
 
-It looks like the brewery_id hasn't been labelled as such and is indicated through the unnamed column at the beginning that has been given the default of `X1`. I could rename it, but instead I will explicitly specify when I join the data next. 
+It looks like the `brewery_id` hasn't been labelled as such and is indicated through the unnamed column at the beginning that has been given the default of `X1`. I could rename it, but instead I will explicitly specify when I join the data next. 
 
+Joining the two tables will get all the information in one place, and should remain fairly tidy with a beer observation representing a row in the final table.  
 
 ### Joining the data
 Before I join, I'll just check that all the rows of beers have a `brewery_id`. 
 ```{r}
+# Check the number of NA values in each column
 map_df(beers, ~ sum(is.na(.)))
 ```
 
-That's good, it seems we won't be missing any brewery information for our beers. 
+That's good, it seems we won't be missing any `brewery_id` values, and therefore brewery information for our beers. 
 
 ```{r}
 beers_breweries <- beers %>%
-  select(-X1, -id) %>% # We don't need these columns
-  left_join(breweries, by = c('brewery_id' = 'X1')) # Specify the columns to join on: left_hand_key = right_hand_key
+  # We don't need these columns
+  select(-X1, -id) %>% 
+  # Specify the columns to join on: left_hand_key = right_hand_key
+  left_join(breweries, by = c('brewery_id' = 'X1')) 
 
+# View the final, joined, table
 glimpse(beers_breweries)
 ```
 
@@ -111,7 +126,7 @@ beers_breweries <- beers_breweries %>%
          brewery = name.y) # brewery name
 ```
 
-#### Unit conversions
+### Unit conversion
 One last thing that I would like to do is to change some of the units to make them more intuitive for my understanding.  
 `abv` would be easier to read if it was multiplied up, and `ounces` isn't how I would normally measure beer (English) so I will create a new column with the conversion to milliliter so that if I ever have to use the quantity measure it will be in units that I have a better intuitive understanding of.
 
@@ -123,7 +138,7 @@ beers_breweries <- beers_breweries %>%
 glimpse(beers_breweries)
 ```
 
-Ok, that looks good to me, let's get started.  
+Ok, that looks good to me, let's start the next section. 
 
 ***
 
@@ -136,20 +151,20 @@ Let's start by just getting the top 20 states with the most breweries in them.
 ```{r message=FALSE, error=FALSE, warning=FALSE}
 top_20_states <- breweries %>% 
   group_by(state) %>%
-  summarise(n_breweries = n()) %>%
-  arrange(desc(n_breweries)) %>%
-  top_n(20)
+  summarise(n_breweries = n()) %>% # Count the number of breweries per state
+  arrange(desc(n_breweries)) %>% # Sort the results
+  top_n(20) # Take the top 20 rows
 ```
 
 We can then plot these to make some more sense of the comparison between the states.   
 
 ```{r}
-# Calculate mean average number of breweries
+# Calculate mean average number of breweries for use in graph
 avg_breweries <- breweries %>%
   group_by(state) %>% 
-  summarise(n = n()) %>% 
-  summarise(mean = mean(n)) %>%
-  `$`(mean)
+  summarise(n = n()) %>% # Summarise the first time by state
+  summarise(mean = mean(n)) %>% # Summarise again to leave a single average value
+  `$`(mean) # Return just that single value
 
 ggplot(data = top_20_states, aes(x = reorder(state, -n_breweries), y = n_breweries)) +
   geom_col( fill = '#4B77BE') + 
@@ -161,12 +176,13 @@ ggplot(data = top_20_states, aes(x = reorder(state, -n_breweries), y = n_breweri
 
 ***
 #### By city
+Which city would be the best to visit if you were going somewhere to find lots of craft beer?
 ```{r message=FALSE, error=FALSE, warning=FALSE}
 cities_count <- breweries %>% 
-  group_by(city) %>%
-  summarise(n_breweries = n()) %>%
-  arrange(desc(n_breweries)) %>%
-  top_n(20)
+  group_by(city) %>% # Group by city
+  summarise(n_breweries = n()) %>% # Count per city
+  arrange(desc(n_breweries)) %>% # Sort by count descending
+  top_n(20) # Return the top 20 rows
 ```
 
 ```{r}
@@ -185,20 +201,23 @@ ggplot(data = cities_count, aes(x = reorder(city, -n_breweries), y = n_breweries
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) # rotate the axis text
 ```
 
+We can see here that Portland has the most breweries in any city; they are far out in front, shortly followed by Boulder, Chicago and Seattle. 
+It should be noted that this data will only be representative of those cities that have at least one recorded craft beer brewery as we are using data for breweries rather than by city. 
+
 ***
 
 #### By alcohol content 
-Let's have a look at those breweries that have a high alcohol content so you know where to go for your strong craft beer. I have limited the breweries to those that have produced at least 1 beer. 
+Let's have a look at those breweries that have a high alcohol content so you know where to go for your strong craft beer. I have limited the breweries to those that have produced more than 1 beer. 
 
 ```{r}
 high_abv <- beers_breweries %>%
   group_by(brewery) %>%
-  summarise(avg_abv = mean(abv, na.rm = T), n_beers = n()) %>%
-  filter(n_beers > 1) %>%
+  summarise(avg_abv = mean(abv, na.rm = T), n_beers = n()) %>% # na.rm as some beers lack abv information
+  filter(n_beers > 1) %>% 
   arrange(desc(avg_abv)) %>%
-  top_n(10, avg_abv) %>%
+  top_n(10, avg_abv) %>% # Top 10 rows based on avg_abv
   inner_join(breweries, by=c('brewery' = 'name')) %>%
-  transmute(brewery, avg_abv, n_beers, location = paste(city, state, sep = ', '))
+  transmute(brewery, avg_abv, n_beers, location = paste(city, state, sep = ', ')) # Keep the relevant columns and join city and state to make a location variable
 
 print(high_abv)
 ```
@@ -228,12 +247,14 @@ Looks like the states with the strongest beers are Nevada, Washington DC and Ken
 *** 
 ### Beer style { .tabset .tabset-pills }
 #### Most popular 
+Let's produce a graph that shows us the most popular beer style in the data. 
 ```{r}
 beers_breweries %>% 
-  group_by(style) %>%
-  summarise(count = n()) %>%
-  filter(count > 25) %>%
-  ggplot(aes(reorder(style, count), count)) + geom_col(fill = '#F9690E') + 
+  group_by(style) %>% # Group by the beer style
+  summarise(count = n()) %>% # Count per group
+  filter(count > 25) %>% # Only the larger groups
+  ggplot(aes(reorder(style, count), count)) + # Reorder the bars
+  geom_col(fill = '#F9690E') + 
   theme_fivethirtyeight() +
   coord_flip()
 ```
@@ -257,6 +278,7 @@ American Double / Imperial IPA appears to be the strongest on average quite comf
 
 ***
 ### ABV vs. IBU
+Let's have a quick look at the relationship between two of our numeric variables: `ibu` and `avb` which represent bitterness and alcohol content. 
 ```{r warning=FALSE, error=FALSE, message=FALSE}
 beers_breweries %>%
   select(ibu, abv) %>%
@@ -267,9 +289,89 @@ beers_breweries %>%
   theme_minimal()
 ```
   
-There seems to be a fairly clear relationship between ibu and abv for those beers where both the measures are available. 
+There seems to be a fairly clear relationship between `ibu` and `abv` for those beers where both the measures are available.  
 
-***
+***  
+## Predicting ABV using `caret` 
+I am keen to build some models to see if we can predict the ABV of a beer based on some of the other features or information that is provided in these data sets. 
+
+If we run a summary on the response variable ABV, then we can see that there are some missing values for those which will have to be removed before we train our model. 
+
+I will start by looking at the numeric values. I imagine that improves may be able to be made by using categorical variables but with such a high number of categories in each variable I will leave it for now. 
+
+```{r}
+# Let's see if ABV has any NA values
+summary(beers$abv)
+```
+
+### Random Forest
+Using random forest with `caret` and `ranger` to predict the ABV of beers.
+
+```{r}
+beers_with_abv <- beers %>% 
+  filter(!is.na(abv), !is.na(ibu), !is.na(ounces)) # Keep only complete cases
+
+set.seed(1) # Set the seed 
+model <- train(abv ~ ibu + ounces, # Define our formula
+               data = beers_with_abv, 
+               method = 'ranger', # Random forest package
+               trControl = trainControl(method = 'cv', number = 10, verboseIter = TRUE)) # Cross validation to provide better indication of out-of-sample error
+```
+
+We can have an initial look at the model through the print method. 
+
+```{r}
+print(model)
+```
+
+The RMSE is around 1% ABV per beer.  
+
+Just looking at the results can make it difficult to judge whether the model has gone a good job or not, so let's have a look at plotting them to see whether we can gain a little more insight there. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Predict using the ranger model
+beers_with_abv$predictions <- predict(model, beers_with_abv) 
+```
+
+What are the best ways to visualise a model that you have built? I will plot the predicted values against the true values to see how well the model fit with an abline. 
+
+```{r}
+beers_with_abv %>% 
+  select(abv, ibu, ounces, predictions) %>% 
+  ggplot(aes(abv, predictions)) + 
+  geom_point(alpha = .5, shape = 1, size = 1) + geom_abline() + 
+  theme_minimal()
+```
+  
+Let's have a look and see whether a linear model is more effective. 
+
+```{r}
+linear_model <- train(abv ~ ibu + ounces, 
+                      data = beers_with_abv, 
+                      method = "lm", # Linear model method
+                      trControl = trainControl(method = "cv", number = 10)) # Cross validation
+
+print(linear_model)
+```
+Initially this model does appear to be slightly better than the random forest approach (keeping in mind that I haven't done any forest tuning, so perhaps further improvements could be done).
+```{r}
+summary(linear_model)
+```
+
+```{r}
+# Predict using the linear model 
+beers_with_abv$linear_predictions <- predict(linear_model, beers_with_abv) 
+ggplot(beers_with_abv, aes(linear_predictions, abv, col = abv > 0.10)) + 
+  geom_point(alpha = .75, shape = 1, size = 1) + geom_abline() + 
+  theme_minimal()
+```
+
+There are two outliers in the data where the beer is very strong (I have highlighted them above for your reference) which could improve our results if we were to remove them. Further investigation needed. 
+
+
+  
+***  
+
 ## Conclusions
 - Colorado, California and Michigan are the states that contain the most craft beer breweries
 - Portland is the busiest city for craft beer lovers and brewers 
@@ -278,3 +380,4 @@ There seems to be a fairly clear relationship between ibu and abv for those beer
 - American IPA is the most popular style of craft beer as well as one of the strongest on average 
 - American Double / Imperial IPA is the beer style for those that like their beer strong
 - There appears to be a clear relationship between the bitterness and alcohol strength of these craft beers 
+- When predicting ABV using beer size and bitterness, linear model appears the most effective of those methods tried but more work needs to be done with the predictions and comparisons
