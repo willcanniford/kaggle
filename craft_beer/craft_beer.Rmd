@@ -1,5 +1,5 @@
 ---
-title: "Craft Beer Exploration in R"
+title: "Craft beer: EDA and predictions"
 author: "Will Canniford"
 output: 
   html_document:
@@ -343,6 +343,7 @@ beers_with_abv %>%
   theme_minimal()
 ```
   
+### Linear model
 Let's have a look and see whether a linear model is more effective. 
 
 ```{r}
