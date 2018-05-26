@@ -24,8 +24,8 @@ library(lubridate)
 ***
 
 ## Load and clean the data
+Firstly, let's read in the packages that I am going to be using.
 ```{r eval=FALSE}
-# Packages used and loaded
 library(tidyverse)
 library(ggplot2)
 library(readr)
@@ -33,54 +33,72 @@ library(stringr)
 library(lubridate)
 ```
   
-The data here is provided in a csv file and kept in the input directory, which is inside the current working directory. I just simply load it here using the `read_csv` function. 
+The data here is provided to us in a csv file and kept in the input directory, which is inside the current working directory. I just simply load it here using the `read_csv` function from the `readr` package. 
 
 ```{r message = FALSE}
 full_data <- read_csv('./input/flavors_of_cacao.csv')
+```
 
+Now that we have read in the data we should explore the data set to try and get an understanding about how the data is stored for us. 
+```{r}
 # Check the dimensions of the data
 dim(full_data)
-
-# Remove spaces from the column names
-names(full_data) <- tolower(gsub(pattern = '[[:space:]+]', '_', names(full_data)))
+# Check the column names
 names(full_data)
 ```
 
-
+If we look at the column names we can see that they contain spaces as well as some line breaks, which definintely isn't good, so I will remove them using `gsub`. 
 ```{r}
-# Look at the first few rows of the data
-head(full_data)
+# Removing the spaces and line breaks
+names(full_data) <- tolower(gsub(pattern = '[[:space:]+]', '_', names(full_data)))
 
-# Remove that first row that seems to be a duplication of the headers
-full_data <- full_data[-1,]
+# View the new column names 
+names(full_data)
 ```
 
+That is much more manageable now. I have things about the `janitor` package that deals with things like that, perhaps in a better way so that will be something that I explore in the future.  
+
+View the first few rows of the data. 
+```{r}
+head(full_data)
+```
+
+It looks like the first row of the data is duplicated from the header, so I will remove that as it definitely isn't an observation. 
+```{r}
+full_data <- full_data[-1,] # Remove first row
+```
+  
+Another piece of data cleaning that we should do is remove the _%_ sign from the cocoa_percent column. This will mean that we can have the column as numeric, which makes much more sense than having it as a string or category. 
+  
 ```{r}
 # Remove the % sign from the cocoa percent column
 full_data$cocoa_percent <- sapply(full_data$cocoa_percent, function(x) gsub("%", "", x))
+```
 
+We can now retype the columns to convert the cocoa_percent to a numeric. 
+```{r}
 # Retype the columns
 full_data <- type_convert(full_data)
+
+# Have a look at the new data types
+map_df(full_data, class)
 ```
 
-Removing the % sign from the cocoa percent column allows us to convert it to a numeric type which will help in further analysis
-
+We can convert the year column to a date type using the `lubridate` package. 
 ```{r}
-# Have a look at the summary of the new data with the new column types
-summary(full_data)
-```
-
-
-
-```{r}
-# Mutate a new column that converts the year into a date type 
+# Mutate a column that converts the year into a date type 
 full_data <- full_data %>%
   mutate(review_date = ymd(paste(review_date, 1, 1, sep="-")))
+```
 
-# Generate a table of average ratings by year
+We can now use that new date column to create some summary statistics for each year. 
+```{r}
 avg_ratings <- full_data %>% 
-  group_by(review_date) %>% 
-  summarise(avg_rating = mean(rating), n_ratings = n())
+  group_by(review_date) %>% # Group by new date column
+  summarise(avg_rating = mean(rating), n_ratings = n()) # Summary stats
+
+# Print our new table
+avg_ratings
 ```
 
 ***
@@ -302,4 +320,5 @@ companies %>%
   labs(x = 'Broad bean origin', y = 'Company')
 ```
 
-Thanks for taking the time to have a look at my work. Any comments/feedback welcome. 
+Thanks for taking the time to have a look at my visualisations.
+I would greatly appreciate any feedback or advice. 
