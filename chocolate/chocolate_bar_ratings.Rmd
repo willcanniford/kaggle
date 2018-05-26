@@ -1,6 +1,15 @@
 ---
 title: "Chocolate Bar Ratings: Data Visualisations"
-output: html_document
+author: "Will Canniford"
+output: 
+  html_document:
+    number_sections: false
+    toc: true
+    toc_depth: 6
+    highlight: tango
+    theme: yeti
+    code_folding: show
+    df_print: kable
 ---
 
 ```{r setup, include=FALSE}
