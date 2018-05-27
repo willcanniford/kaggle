@@ -167,50 +167,55 @@ The weekend seems to pose a higher risk of incident as well. Following my specul
 ## Species analysis 
 Perhaps instead of staying indoors throughout the weekends and summer, you could just be on the lookout for particular species. 
 
+Let's have a look at the observations grouped by species. We can start by generating a simple grouped table of observation counts. 
+
 ```{r}
 species_counts <- full_data %>% 
-    group_by(SpeciesIDDesc) %>%
-    summarise(count = n()) %>% 
-    filter(!is.na(SpeciesIDDesc)) %>%
-    arrange(desc(count)) 
+    group_by(SpeciesIDDesc) %>% # Group by species
+    summarise(count = n()) %>%  
+    filter(!is.na(SpeciesIDDesc)) %>% # Remove those without a species
+    arrange(desc(count)) # Most at the top
 
 print(species_counts)
 ```
   
-If we remove the NAs from the column then we can see below that the dog reigns supreme over the bite kingdom, followed by cat, and then the bat. 
+If we remove the NAs from the column then we can see below that the dog reigns supreme over the bite kingdom, followed by cat, and then the bat.  
+
+We can visualise the data to get a better intuition about how these species compare against one another. 
 
 ```{r}
 species_counts %>%
-  ggplot(aes(x = reorder(SpeciesIDDesc, desc(count)), y = count, fill = count)) +     
+  ggplot(aes(x = reorder(SpeciesIDDesc, desc(count)), y = count)) +     
   geom_col() + 
-  scale_fill_continuous(low = 'red', high = 'yellow', name = 'Count') + 
-  labs(x = 'Species', y = 'Count of recorded bites')
+  labs(x = 'Species', y = 'Count of recorded bites', title = 'Recorded bites grouped by species') + 
+  theme_minimal()
 ```
   
 ***
 ## Breed analysis
-While the species overview hasn't been particularly positive towards dogs, perhaps the breed analysis will offer some redemption for dog lovers, assuming their favourite isn't on the list
+Following the species analysis, we can see that the majority of the bites in the data have come from dogs.  
+We can further investigate this through now looking at breeds and seeing how they compare against one another. 
 
 ```{r, message=FALSE, warning=FALSE}
 breed_bites <- full_data %>% 
-  filter(!is.na(BreedIDDesc)) %>%
-  group_by(BreedIDDesc) %>%
-  summarise(count = n()) %>% 
+  filter(!is.na(BreedIDDesc)) %>% # Remove those observations without breed
+  group_by(BreedIDDesc) %>% # Group by breed
+  summarise(count = n()) %>% # Get counts for each breed 
   arrange(desc(count)) %>% 
-  top_n(10) 
+  top_n(10) # Get top 10 breeds by number of bites
 
 print(breed_bites)
 ```
   
-A comparison among breeds show that there is a clear prominence of bites from pit bulls.
+The comparison among breeds show that there is a clear prominence of bites from pit bulls. This is highlighted further when the results are visualised. 
 
 ```{r}
 breed_bites %>%
-  ggplot(aes(x = reorder(BreedIDDesc, desc(count)), y = count, fill = count)) +     
+  ggplot(aes(x = reorder(BreedIDDesc, desc(count)), y = count)) +     
   geom_col() + 
-  scale_fill_continuous(low = 'red', high = 'yellow', name = 'Count') + 
-  labs(x = 'Breed', y = 'Count of recorded bites') + 
-  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+  labs(x = 'Breed', y = 'Count of recorded bites', title = 'Number of bites grouped by breed') + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
 ```
   
 ***
