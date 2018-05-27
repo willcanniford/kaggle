@@ -89,27 +89,32 @@ So it looks like we are dealing with lots of NA values in this data set. We don'
 
 `bite_date` having missing values could be due to bad data keeping but could also be because of circumstances that means that the data just isn't known.  
 `vaccination_date` being `NA` may just indicate that the animal was never vaccinated.  
+
   
 ***
-## Bites vs. Time
+## Bites over time
 
-Form the summary of bite_date I can see that there is clearly an input mistake, unless someone has written a very confident prediction algorithm! Given our data was collected up until 2017, I'll assume that everything higher that 2018 is a mistake of some kind. Let's have a look...
+Form the summary of `bite_date` I can see that there is clearly an input mistake, unless someone has written a very confident prediction algorithm! Given our data was collected up until 2017, I'll assume that everything higher that 2018 represents a mistake of some kind. We can have a further look at this by subsetting that column. 
 
 ```{r}
 full_data$bite_date[which(full_data$bite_date > ymd('2018-01-01'))]
 ```
   
-Not ideal as there doesn't appear to be any obvious input problem. Perhaps the 2201 is meant to be 2012, and the 2021 is meant to be 2012 as well? For the sake of this particular analysis of bite dates I'll simply remove them for plotting purposes. 
+There doesn't appear to be any obvious standard input problem for these values, so we can't infer what dates they should be. We can take a guess that perhaps the 2201 and 2021 are meant to be 2012, but we cannot be certain.  
+For the sake of this analysis of bite dates, I'll simply remove them for plotting purposes. 
 
 ```{r}
 full_data %>% 
-  filter(bite_date < ymd('2018-01-01')) %>% 
+  filter(bite_date < ymd('2018-01-01')) %>% # Filter the data
     ggplot(aes(year(bite_date))) + 
     geom_bar() + 
-    labs(x = 'Year', y = 'Count') 
+    labs(x = 'Year', y = 'Count', title = 'Bite records over time') + 
+    theme_minimal()
 ```
   
-There is definitely a huge cluster of bite records after 2010. This is probably due to an increase in the recording of the events, or a change in the method of recording, rather than a sudden jump in the number of incidents.
+There is definitely a huge cluster of bite records after 2010. This is probably due to an increase in the recording of the events, or a change in the method of recording, rather than a sudden jump in the number of incidents.  
+
+We can also view a potential outlier that is old, rather than the ones that we have found because they were in the future. A record that is back in the 1950s, 30 years before any of our other recorded bites. 
   
 ***
 
