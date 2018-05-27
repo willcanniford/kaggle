@@ -65,7 +65,7 @@ library(gridExtra)
 
 All of our data is contained within a single spreadsheet, so we can simply read that in using the `read_csv` function from the `readr` package. 
 ```{r, message=FALSE, warning=FALSE}
-full_data <- read_csv('./input/Health_AnimalBites.csv')
+full_data <- read_csv('./input/Health_AnimalBites.csv', col_types = list(BreedIDDesc = col_character(), release_date = col_datetime()))
 ```
 
 Let's have a glimpse at the data to get an idea about what we are working with. 
@@ -168,9 +168,11 @@ The weekend seems to pose a higher risk of incident as well. Following my specul
 Perhaps instead of staying indoors throughout the weekends and summer, you could just be on the lookout for particular species. 
 
 ```{r}
-full_data %>% group_by(SpeciesIDDesc) %>%
-  summarise(count = n()) %>% filter(!is.na(SpeciesIDDesc)) %>%
-  arrange(desc(count)) -> species_counts
+species_counts <- full_data %>% 
+    group_by(SpeciesIDDesc) %>%
+    summarise(count = n()) %>% 
+    filter(!is.na(SpeciesIDDesc)) %>%
+    arrange(desc(count)) 
 
 print(species_counts)
 ```
@@ -183,7 +185,6 @@ species_counts %>%
   geom_col() + 
   scale_fill_continuous(low = 'red', high = 'yellow', name = 'Count') + 
   labs(x = 'Species', y = 'Count of recorded bites')
-
 ```
   
 ***
@@ -192,9 +193,9 @@ While the species overview hasn't been particularly positive towards dogs, perha
 
 ```{r, message=FALSE, warning=FALSE}
 breed_bites <- full_data %>% 
+  filter(!is.na(BreedIDDesc)) %>%
   group_by(BreedIDDesc) %>%
   summarise(count = n()) %>% 
-  filter(!is.na(BreedIDDesc)) %>%
   arrange(desc(count)) %>% 
   top_n(10) 
 

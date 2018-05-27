@@ -233,7 +233,7 @@ $(document).ready(function () {
 <span class="kw">library</span>(lubridate)
 <span class="kw">library</span>(gridExtra)</code></pre></div>
 <p>All of our data is contained within a single spreadsheet, so we can simply read that in using the <code>read_csv</code> function from the <code>readr</code> package.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">full_data &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">'./input/Health_AnimalBites.csv'</span>)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">full_data &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">'./input/Health_AnimalBites.csv'</span>, <span class="dt">col_types =</span> <span class="kw">list</span>(<span class="dt">BreedIDDesc =</span> <span class="kw">col_character</span>(), <span class="dt">release_date =</span> <span class="kw">col_datetime</span>()))</code></pre></div>
 <p>Let’s have a glimpse at the data to get an idea about what we are working with.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">glimpse</span>(full_data)</code></pre></div>
 <pre><code>## Observations: 9,003
@@ -251,7 +251,7 @@ $(document).ready(function () {
 ## $ quarantine_date   &lt;dttm&gt; 1985-05-05, 1986-02-12, 1990-05-07, 1990-10...
 ## $ DispositionIDDesc &lt;chr&gt; &quot;UNKNOWN&quot;, &quot;UNKNOWN&quot;, &quot;UNKNOWN&quot;, &quot;UNKNOWN&quot;, ...
 ## $ head_sent_date    &lt;dttm&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,...
-## $ release_date      &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ...
+## $ release_date      &lt;dttm&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,...
 ## $ ResultsIDDesc     &lt;chr&gt; &quot;UNKNOWN&quot;, &quot;UNKNOWN&quot;, &quot;UNKNOWN&quot;, &quot;UNKNOWN&quot;, ...</code></pre>
 <p>We have just over 9,000 observations and 15 variables. We seem to have a mixture of categorical, numeric, and date columns.</p>
 <div id="missing-data" class="section level3">
@@ -383,9 +383,11 @@ For the sake of this analysis of bite dates, I’ll simply remove them for plott
 <div id="species-analysis" class="section level2">
 <h2>Species analysis</h2>
 <p>Perhaps instead of staying indoors throughout the weekends and summer, you could just be on the lookout for particular species.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">full_data %&gt;%<span class="st"> </span><span class="kw">group_by</span>(SpeciesIDDesc) %&gt;%
-<span class="st">  </span><span class="kw">summarise</span>(<span class="dt">count =</span> <span class="kw">n</span>()) %&gt;%<span class="st"> </span><span class="kw">filter</span>(!<span class="kw">is.na</span>(SpeciesIDDesc)) %&gt;%
-<span class="st">  </span><span class="kw">arrange</span>(<span class="kw">desc</span>(count)) -&gt;<span class="st"> </span>species_counts
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">species_counts &lt;-<span class="st"> </span>full_data %&gt;%<span class="st"> </span>
+<span class="st">    </span><span class="kw">group_by</span>(SpeciesIDDesc) %&gt;%
+<span class="st">    </span><span class="kw">summarise</span>(<span class="dt">count =</span> <span class="kw">n</span>()) %&gt;%<span class="st"> </span>
+<span class="st">    </span><span class="kw">filter</span>(!<span class="kw">is.na</span>(SpeciesIDDesc)) %&gt;%
+<span class="st">    </span><span class="kw">arrange</span>(<span class="kw">desc</span>(count)) 
 
 <span class="kw">print</span>(species_counts)</code></pre></div>
 <pre><code>## # A tibble: 9 x 2
@@ -413,9 +415,9 @@ For the sake of this analysis of bite dates, I’ll simply remove them for plott
 <h2>Breed analysis</h2>
 <p>While the species overview hasn’t been particularly positive towards dogs, perhaps the breed analysis will offer some redemption for dog lovers, assuming their favourite isn’t on the list</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">breed_bites &lt;-<span class="st"> </span>full_data %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">filter</span>(!<span class="kw">is.na</span>(BreedIDDesc)) %&gt;%
 <span class="st">  </span><span class="kw">group_by</span>(BreedIDDesc) %&gt;%
 <span class="st">  </span><span class="kw">summarise</span>(<span class="dt">count =</span> <span class="kw">n</span>()) %&gt;%<span class="st"> </span>
-<span class="st">  </span><span class="kw">filter</span>(!<span class="kw">is.na</span>(BreedIDDesc)) %&gt;%
 <span class="st">  </span><span class="kw">arrange</span>(<span class="kw">desc</span>(count)) %&gt;%<span class="st"> </span>
 <span class="st">  </span><span class="kw">top_n</span>(<span class="dv">10</span>) 
 
