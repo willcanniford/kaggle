@@ -116,39 +116,52 @@ There is definitely a huge cluster of bite records after 2010. This is probably 
 
 We can also view a potential outlier that is old, rather than the ones that we have found because they were in the future. A record that is back in the 1950s, 30 years before any of our other recorded bites. 
   
-***
-
-## Considering the time of year
-
+***  
+## Considering the time of bites { .tabset .tabset-pills}
+### Month
+Let's have a deeper look into when these bites are occurring and see if we can find some patterns.  
 ```{r}
 month_data <- full_data %>%
-  filter(bite_date < ymd('2018-01-01')) %>% 
-  group_by(month = month(bite_date)) %>% 
-  summarise(n_incidents = n()) %>%
-  transmute(month = ymd(paste('2018', month, '01', sep = '-')), n_incidents)
+  filter(bite_date < ymd('2018-01-01')) %>% # Remove those future observations
+  group_by(month = month(bite_date)) %>% # Group by the month
+  summarise(n_incidents = n()) %>% # Count observations
+  transmute(month = ymd(paste('2018', month, '01', sep = '-')), n_incidents) # Create a month date object with lubridate
 
+head(month_data)
+```
 
+We have made all the objects have the year of 2018. For this plot it doesn't matter as we are focussing on the month of the bite rather than the year. 
+
+```{r}
 month_data %>% 
     ggplot(aes(x = month, y = n_incidents, fill = n_incidents)) + 
     geom_col() + 
     labs(x = 'Month', y = 'Incident count', title = "Number of incidents sorted by month") +
-    scale_x_date(date_labels = '%b', date_breaks = '2 month', date_minor_breaks = '1 month') + 
-    scale_fill_continuous(name = '# incidents')
+    scale_x_date(date_labels = '%b', date_breaks = '2 month', date_minor_breaks = '1 month') + # Show just the month
+    scale_fill_continuous(name = '# incidents') + 
+    theme_minimal()
 ```
 
-As you can see from this plot, it is clear to see that there are more incidents during the summer months. I would assume that this is down to higher exposure to potential incidents rather than a higher rate. Although, this is pure speculation. 
+As you can see from this plot, it is clear to see that there are more incidents during the summer months. I would assume that this is down to higher exposure to potential incidents rather than a higher rate. Although, this is pure speculation.  
+
+***
+
+### Day of the week
+Let's focus on the day of the week now and see if there are days of the week that account for higher numbers of bites. 
 
 ```{r}
 full_data %>% 
   filter(bite_date < ymd('2018-01-01')) %>% 
     ggplot(aes(wday(bite_date, label = TRUE, week_start = 1), fill = ..count..)) + 
     geom_bar() + 
-    labs(x = 'Day of week', y = 'Incident count', title = "Number of incidents sorted by day of week") + 
-    scale_fill_continuous(name = '# incidents')
+    labs(x = 'Day of the week', y = 'Incident count', title = "Number of incidents grouped by day of the week") + 
+    scale_fill_continuous(name = '# incidents') + 
+    theme_minimal() + 
+    scale_y_continuous(breaks = seq(0,1400,200))
 ```
   
-The weekend seems to pose a higher risk of incident as well. Following my speculation from earlier this is probably a result of higher opportunity rather than higher rate. The evidence for that comparison with day of week vs. month impact is much less, however, as the counts are much more equal when looking at day of the week.
-  
+The weekend seems to pose a higher risk of incident as well. Following my speculation from earlier this is probably a result of higher opportunity rather than higher rate. The evidence for that comparison with day of the week vs. month impact is much less, however, as the counts are much more equal when looking at day of the week.  
+
 ***
 
 ## Species analysis 
