@@ -175,7 +175,9 @@ $(document).ready(function () {
 <li><a href="#context">Context</a></li>
 <li><a href="#content">Content</a></li>
 </ul></li>
-<li><a href="#load-the-data">Load the data</a></li>
+<li><a href="#load-the-data">Load the data</a><ul>
+<li><a href="#missing-data">Missing data</a></li>
+</ul></li>
 <li><a href="#bites-vs.time">Bites vs. Time</a></li>
 <li><a href="#considering-the-time-of-year">Considering the time of year</a></li>
 <li><a href="#species-analysis">Species analysis</a></li>
@@ -220,15 +222,17 @@ $(document).ready(function () {
 </div>
 <div id="load-the-data" class="section level2">
 <h2>Load the data</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Packages used and loaded</span>
-<span class="kw">library</span>(tidyverse)
+<p>Let’s start by loading in the packages that we are going to be using throughout the analysis.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(tidyverse)
 <span class="kw">library</span>(ggplot2)
 <span class="kw">library</span>(readr)
 <span class="kw">library</span>(stringr)
 <span class="kw">library</span>(lubridate)
 <span class="kw">library</span>(gridExtra)</code></pre></div>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">full_data &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">'./input/Health_AnimalBites.csv'</span>)
-<span class="kw">glimpse</span>(full_data)</code></pre></div>
+<p>All of our data is contained within a single spreadsheet, so we can simply read that in using the <code>read_csv</code> function from the <code>readr</code> package.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">full_data &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">'./input/Health_AnimalBites.csv'</span>)</code></pre></div>
+<p>Let’s have a glimpse at the data to get an idea about what we are working with.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">glimpse</span>(full_data)</code></pre></div>
 <pre><code>## Observations: 9,003
 ## Variables: 15
 ## $ bite_date         &lt;dttm&gt; 1985-05-05, 1986-02-12, 1987-05-07, 1988-10...
@@ -246,7 +250,37 @@ $(document).ready(function () {
 ## $ head_sent_date    &lt;dttm&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,...
 ## $ release_date      &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ...
 ## $ ResultsIDDesc     &lt;chr&gt; &quot;UNKNOWN&quot;, &quot;UNKNOWN&quot;, &quot;UNKNOWN&quot;, &quot;UNKNOWN&quot;, ...</code></pre>
+<p>We have just over 9,000 observations and 15 variables. We seem to have a mixture of categorical, numeric, and date columns.</p>
+<div id="missing-data" class="section level3">
+<h3>Missing data</h3>
+<p>Let’s run a quick <code>map_df</code> to see how many <code>NA</code> values are in each column.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">missing_stats &lt;-<span class="st"> </span>purrr::<span class="kw">map_df</span>(full_data, ~<span class="st"> </span><span class="kw">sum</span>(<span class="kw">is.na</span>(.))) %&gt;%
+<span class="st">  </span><span class="kw">gather</span>(<span class="st">'Column'</span>, <span class="st">'na_count'</span>)
+
+<span class="kw">print</span>(missing_stats)</code></pre></div>
+<pre><code>## # A tibble: 15 x 2
+##    Column            na_count
+##    &lt;chr&gt;                &lt;int&gt;
+##  1 bite_date              317
+##  2 SpeciesIDDesc          118
+##  3 BreedIDDesc           5244
+##  4 GenderIDDesc          2526
+##  5 color                 2576
+##  6 vaccination_yrs       5265
+##  7 vaccination_date      4888
+##  8 victim_zip            1838
+##  9 AdvIssuedYNDesc       6438
+## 10 WhereBittenIDDesc      616
+## 11 quarantine_date       6983
+## 12 DispositionIDDesc     7468
+## 13 head_sent_date        8608
+## 14 release_date          7558
+## 15 ResultsIDDesc         7460</code></pre>
+<p>So it looks like we are dealing with lots of NA values in this data set. We don’t know how much of that is to do with data errors or if they are missing due to that particular variable not being applicable to that observation.</p>
+<p><code>bite_date</code> having missing values could be due to bad data keeping but could also be because of circumstances that means that the data just isn’t known.<br />
+<code>vaccination_date</code> being <code>NA</code> may just indicate that the animal was never vaccinated.</p>
 <hr />
+</div>
 </div>
 <div id="bites-vs.time" class="section level2">
 <h2>Bites vs. Time</h2>

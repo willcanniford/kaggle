@@ -52,8 +52,8 @@ library(gridExtra)
 ```
 
 ## Load the data
+Let's start by loading in the packages that we are going to be using throughout the analysis. 
 ```{r eval=FALSE}
-# Packages used and loaded
 library(tidyverse)
 library(ggplot2)
 library(readr)
@@ -62,11 +62,33 @@ library(lubridate)
 library(gridExtra)
 ```
 
+
+All of our data is contained within a single spreadsheet, so we can simply read that in using the `read_csv` function from the `readr` package. 
 ```{r, message=FALSE, warning=FALSE}
 full_data <- read_csv('./input/Health_AnimalBites.csv')
+```
+
+Let's have a glimpse at the data to get an idea about what we are working with. 
+```{r}
 glimpse(full_data)
 ```
   
+We have just over 9,000 observations and 15 variables. We seem to have a mixture of categorical, numeric, and date columns. 
+
+### Missing data 
+Let's run a quick `map_df` to see how many `NA` values are in each column. 
+
+```{r}
+missing_stats <- purrr::map_df(full_data, ~ sum(is.na(.))) %>%
+  gather('Column', 'na_count')
+
+print(missing_stats)
+```
+
+So it looks like we are dealing with lots of NA values in this data set. We don't know how much of that is to do with data errors or if they are missing due to that particular variable not being applicable to that observation.  
+
+`bite_date` having missing values could be due to bad data keeping but could also be because of circumstances that means that the data just isn't known.  
+`vaccination_date` being `NA` may just indicate that the animal was never vaccinated.  
   
 ***
 ## Bites vs. Time
