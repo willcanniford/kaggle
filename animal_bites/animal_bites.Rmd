@@ -221,70 +221,95 @@ breed_bites %>%
 ***
  
 ## First the bite, then the test
-
+We can have a look at the rabies test results column `ResultsIDDesc` to see how many of the rabies test results came back positive. 
 ```{r}
 table(full_data$ResultsIDDesc)
 ```
   
-Just four positive results for rabies out of all the bites.  
-We can further investigate which animals have been tested, and if those animals have a particularly high prominence of rabies. 
+There were just four positive results for rabies out of all the bites in the data.   
+
+We can further investigate which animals have been tested, and if those animals, or species, have a particularly high prominence of rabies. 
 
 ```{r}
 full_data %>% 
-  filter(!is.na(ResultsIDDesc), !is.na(SpeciesIDDesc)) %>% 
-  group_by(SpeciesIDDesc, ResultsIDDesc) %>%
+  filter(!is.na(ResultsIDDesc), !is.na(SpeciesIDDesc)) %>% # Must have a species and test result
+  group_by(SpeciesIDDesc, ResultsIDDesc) %>% # Grouping
   summarise(count = n()) %>%
-  spread(ResultsIDDesc, count) %>%
-  filter(POSITIVE > 0) %>%
-  mutate(pos_perc = round(POSITIVE / (POSITIVE + NEGATIVE) * 100, 2))
+  spread(ResultsIDDesc, count) %>% # Change from long to wide format for printing
+  filter(POSITIVE > 0) %>% # Remove those species without at least one positive result
+  mutate(pos_perc = round(POSITIVE / (POSITIVE + NEGATIVE) * 100, 2)) # Calculate positive percentage
 ``` 
   
 Of those known results for the test, both bats and dogs are roughly 2% positive. Note the number of unknown for dogs in comparison to bats. It must be much more common practice to take the test and get the results if you are bitten by a bat when compared to a dog bite. 
 
 ### Vaccination and test choice
+What makes someone decide that they are going to get tested following an animal bite? The test doesn't appear to be required otherwise every observation would have associated information about a test that had taken place.  
+
+Perhaps if you know that the animal has been vaccinated then you wouldn't pursue the chance of rabies any further. This is only really relevant to domesticated animals who would be vaccinated in the first place, so we will focus on Dog bites. 
 
 ```{r}
 full_data %>% 
-  filter(SpeciesIDDesc == 'DOG', !is.na(ResultsIDDesc)) %>%
-  group_by(is.na(vaccination_date), ResultsIDDesc) %>%
+  filter(SpeciesIDDesc == 'DOG', !is.na(ResultsIDDesc)) %>% # Dogs with a test result
+  group_by(is.na(vaccination_date), ResultsIDDesc) %>% # Group by whether we have information about a vaccination date
   summarise(count = n()) %>%
-  spread(ResultsIDDesc, count, fill = 0) %>%
+  spread(ResultsIDDesc, count, fill = 0) %>% # Convert to long format for display
   mutate(test_perc = round((NEGATIVE + POSITIVE) / (NEGATIVE + POSITIVE + UNKNOWN) * 100, 2))
 ```
   
-If we are right that unknown means that no test was taken then we can see that people tended to opt for the test if the dog hadn't be vaccinated much more frequently than if they knew that the dog had been vaccinated. 
-
+If we are right that unknown means that no test was taken then we can see that people tended to opt for the test more if the dog hadn't be vaccinated than if they knew that the dog had been vaccinated. 
 
 ***
 
 ## Bite position
+Another piece of information that we have access to in the data is the position of the bite.  
+
+We can use this to have a look and see if a particular species is typically involved in head bite incidents or body incidents.  
 ```{r, message=FALSE, warning=FALSE}
-full_data %>% group_by(SpeciesIDDesc, WhereBittenIDDesc) %>%
-  filter(!is.na(WhereBittenIDDesc), !is.na(SpeciesIDDesc)) %>%
+full_data %>% 
+  group_by(SpeciesIDDesc, WhereBittenIDDesc) %>%
+  filter(!is.na(WhereBittenIDDesc), !is.na(SpeciesIDDesc)) %>% # Observations with bite and species variables
   summarise(count = n()) %>%
-  spread(WhereBittenIDDesc, count, fill = 0) %>%
-  mutate(BODY_PROP = BODY/(BODY+HEAD), TOTAL = BODY + HEAD) %>%
+  spread(WhereBittenIDDesc, count, fill = 0) %>% # Spread the data and fill unseen combinations with 0
+  mutate(BODY_PROP = BODY/(BODY+HEAD), TOTAL = BODY + HEAD) %>% # Create proportion variable
   select(BODY_PROP, TOTAL) %>%
   ggplot() + 
     geom_col(aes(x = reorder(SpeciesIDDesc, desc(BODY_PROP)), y = BODY_PROP, colour = TOTAL), width = .02) +
     geom_point(aes(x = reorder(SpeciesIDDesc, desc(BODY_PROP)), y = BODY_PROP, size = TOTAL, colour = TOTAL)) +
-  coord_flip(ylim = c(.6, 1)) + 
-  theme(legend.position = 'bottom') + 
-  labs(x = 'Species', y = 'Proportion of bites on body to head')
+  coord_flip(ylim = c(.6, 1)) + # Flip the coordinates
+  theme_minimal() + 
+  theme(legend.position = 'bottom') + # Move the legend
+  labs(x = 'Species', y = 'Proportion of bites on body', title = 'Bite position grouped by species')
 ```
   
-Horses have the highest proportion of bites that are recorded as the head, however they have a very small sample size. Of those bites where we know the position of the bite, the dog appears to have a high head proportion with almost 1 in 5 cases being face/head based. Perhaps this is people bending down to greet an unfriendly dog? 
-Bats and cats remain roughly the same level of head bites where we know the location. 
+Horses have the highest proportion of bites that are recorded as the head, however they have a very small sample size. Of those bites where we know the position of the bite, the dog appears to have a high head proportion with almost 1 in 5 cases being face/head based. Perhaps this is people bending down to greet an unfriendly dog?  
+
+Bats and cats remain roughly the same level of head bites where we know the location. Skunk, raccoon, rabbit and ferret don't have any recorded instances of face head/bites but the sample size for those species is much smaller.  
 
 ***
-## Aggressive males
+## Aggressive males - gender analysis
+Let's investigate to see whether there is a difference in the bite count between the sexes of the offending animal.  
+
 ```{r}
 ggplot(full_data, aes(x = as.factor(GenderIDDesc))) + 
   geom_bar() + 
-  labs(x = 'Gender', y = 'Count')
+  labs(x = 'Gender', y = 'Count') + 
+  theme_minimal()
 ```
   
-The prominent gender of the biters is male here, but again with a surprising amount of NA values throughout the data set. 
+The prominent gender of the biters is male here, but again with a surprising amount of `NA` values throughout the data set.  
+
+If we add some colour to this visualisation by the species of the animal, then we might find some patterns with this insight. 
+
+```{r}
+ggplot(full_data, aes(x = as.factor(GenderIDDesc), fill = SpeciesIDDesc)) + 
+  geom_bar(position = 'fill') + 
+  labs(x = 'Gender', y = 'Count') + 
+  theme_minimal()
+```
+
+We see here that the species with less observations seem to appear in the `"UNKNOWN"` and `NA`. This is probably due to the fact that they don't have access to the animal to establish its gender. This is even the case with the bat bites, as the recipient of the bite is not going to know that information when reporting it.  
+
+`NA` values here may well be equivalent to `"UNKNOWN"` and represent those instances where the gender of the animal could not be established or known. This perhaps makes sense given that an owner is going to know the gender of their pet and would be able to report that when bitten; i.e. cats and dogs. 
 
 ***
 ## Conclusions
@@ -294,4 +319,4 @@ They also seem to target the face more than other animals, making them perhaps e
 * If someone got bitten by an animal that they knew had been vaccinated then they were less likely to go for a test for rabies. 
 
   
-If you have any further suggestions or advice, then I would love to hear it! 
+Thanks for taking the time to have a look at my analysis. If you have any feedback or advice, then I would love to hear it.  
