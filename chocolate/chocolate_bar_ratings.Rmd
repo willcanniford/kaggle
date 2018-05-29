@@ -304,7 +304,18 @@ full_data %>%
   geom_smooth(method = 'lm', se = FALSE, col = 'red')
 ```
   
-There doesn't appear to be any relationship. 
+There doesn't appear to be a strong relationship between cocoa percent and rating here. Let's have a look at the model separately.  
+
+```{r}
+model <- lm(formula = rating ~ cocoa_percent, 
+            data = full_data)
+
+summary(model)
+```
+  
+With an adjusted R-squared of 0.02662 it is fair to say that this isn't a very good model, but there is a relationship between the rating and the cocoa_percent, it just isn't the most informative. The negative slope implies to us that the higher the cocoa_percent then the lower the rating of the chocolate.  
+
+If we were going to build a model to predict the rating of the chocolate then we would definitely have to take more variables into consideration. 
   
 ***
   
