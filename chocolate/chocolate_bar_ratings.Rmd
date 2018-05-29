@@ -193,44 +193,54 @@ full_data %>%
   labs(x = 'Review year', y = 'Rating')
 ```
 
-We can see that the spread of the reviews is definitely narrowing, with the lower tail retracting and reviews now generally falling between 3 and 4 in 2015 onwards.
+We can see that the spread of the reviews is definitely narrowing, with the lower tail retracting and reviews now generally falling between 3 and 4 in 2015 onwards.  
+
+***
   
+## Companies and Makers
 ### Company location
-Does the company location make a difference to the quality of the product? 
+We can investigate whether the location of the company has an impact on the quality of the product.  
 ```{r message = FALSE}
 full_data %>%
-  group_by(company_location) %>% filter(n() > 10) %>% mutate(avg = mean(rating)) %>%
+  group_by(company_location) %>% 
+  filter(n() > 10) %>% 
+  mutate(avg = mean(rating)) %>%
   ggplot() + 
   geom_boxplot(aes(reorder(company_location, avg), rating, fill = avg)) + 
-  scale_fill_continuous(low = '#ffffcc', high = '#fc4e2a') + 
+  scale_fill_continuous(low = '#ffffcc', high = '#fc4e2a', name = "Average rating") + 
   coord_flip() + 
   theme_minimal() + 
-  labs(x = 'Company Location', y = 'Rating')
+  labs(x = 'Company Location', y = 'Rating') +
+  expand_limits(y = c(0,5))
 ```
   
 ### Master makers
-Are there masterful makers that can do no wrong? 
+As the column in the data is company/maker, I will extract the maker so that we can compare the makers against one another to see if there are any master makers hidden in the data.  
+
+Once I have split the company and maker from the column then I will select those makers that have at least 3 reviewed products.  
 ```{r warning = FALSE, message=FALSE}
-# Split the maker from the company_maker column before choosing those makers that have at least 3 reviewed products
 colnames(full_data)[1] <- 'company_maker'
 makers <- full_data %>%
   rowwise %>%
   mutate(maker = str_match(company_maker, '\\((.*)\\)')[2]) %>% 
-  filter(!is.na(maker)) %>% group_by(maker) %>% filter(n() >= 3) %>% mutate(avg = mean(rating)) 
+  filter(!is.na(maker)) %>% # If a maker was noted
+  group_by(maker) %>% # Grouping
+  filter(n() >= 3) %>% # Minimum product filter
+  mutate(avg = mean(rating)) # Get average rating 
 
 ggplot(makers) + 
   geom_boxplot(aes(x = reorder(maker, rating, FUN = mean), y = rating, fill = avg)) + 
   labs(x = 'Maker', y = 'Rating') + 
   coord_flip() + 
-  theme_minimal()
-
+  theme_minimal() + 
+  scale_fill_continuous(name = "Average rating") +
+  expand_limits(y = c(0,5))
 ```
+It appears as those *Cinagra* is our master chocolatier.  
 
-  
-### Looking at Company records
+### Company records over time
+I split the company/maker column again, this time selecting the company, and filter by those with at least 10 reviews.    
 ```{r warning= FALSE, message = FALSE}
-
-# I split the company/maker column again and then filter by companies that have at least 10 reviews to their name
 companies <- full_data %>%
   rowwise() %>%
   mutate(company = str_trim(str_split(company_maker, '\\(')[[1]][1])) %>%
@@ -238,8 +248,12 @@ companies <- full_data %>%
   filter(n() > 10) %>% 
   mutate(avg = mean(rating))
 
-# By plotting the count of reviews for certain values we are also able to see the distribution of 
-# scores that a particular company has obtained 
+head(companies)
+```
+
+By plotting the count of reviews for ratings using the `size` aesthetic again, we are also able to see the distribution of scores for the companies.
+
+```{r warning= FALSE, message = FALSE}
 companies  %>%
   ggplot(aes(x = reorder(as.factor(company), rating, FUN = mean), y = rating)) + 
   geom_count(alpha = .1) + 
@@ -251,6 +265,7 @@ companies  %>%
   scale_size_continuous(name = 'Number of ratings', breaks = seq(0,14,2))
 ```
 
+This gives us an overview of companies overall, but doesn't show us trends for those companies over time. We can investigate that using `facet_wrap` and plotting against the `review_date`. 
 
 ```{r warning=F, fig.width=11, fig.height=12, message = F}
 # Which of these companies are improving
@@ -269,14 +284,15 @@ full_data %>%
     scale_x_date(date_labels = '%Y', date_breaks = '2 year') + 
     theme_minimal() + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-    guides(colour = FALSE) + labs(x = 'Year of review', y = 'Average rating') + 
+    guides(colour = FALSE) + 
+  labs(x = 'Year of review', y = 'Average rating', title = "Company average ratings over time") + 
     scale_size_continuous(breaks = seq(4, 16, 2), name = 'Number of reviews') + 
     scale_alpha(guide = F)
-
 ```  
   
 Some appear to have shown improvements, but such increases can probably just be put down to small number of reviews for a given year. To see whether the company is truly improving we would require a greater number of product reviews for the current year. 
 
+***
   
 ### Cocoa percent and rating
 More cocoa = higher rating? 
