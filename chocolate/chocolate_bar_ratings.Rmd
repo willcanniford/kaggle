@@ -23,7 +23,7 @@ library(lubridate)
 
 ***
 
-## Load and clean the data
+# Load and clean the data
 Firstly, let's read in the packages that I am going to be using.
 ```{r eval=FALSE}
 library(tidyverse)
@@ -94,8 +94,8 @@ We can convert the year column to a date type using the `lubridate` package.
 full_data <- full_data %>%
   mutate(review_date = ymd(paste(review_date, 1, 1, sep="-")))
 ```
-
-We can now use that new date column to create some summary statistics for each year. 
+  
+We can use the newly created date column that we mutated to create a simple summary table grouping by the year.  
 ```{r}
 avg_ratings <- full_data %>% 
   group_by(review_date) %>% # Group by new date column
@@ -109,8 +109,9 @@ Here we have created a basic summary table of the average ratings and the number
 
 ***
 
-## Visualising the data
-Distribution of ratings faceted by year
+# Insights
+## By year
+### Faceted distribution of ratings
 ```{r}
 ggplot(full_data, aes(x = rating, fill = as.factor(review_date))) + 
   geom_density(alpha = .5) + 
@@ -118,7 +119,10 @@ ggplot(full_data, aes(x = rating, fill = as.factor(review_date))) +
   guides(fill = FALSE) + labs(x = 'Rating', y = 'Density')
 ```
 
-While the peaks throughout the years seems to remain fairly constant, you can see that the most recent year doesn't have the spread of the first years. 
+While the peaks throughout the years seems to remain fairly constant, you can see that the most recent year doesn't have the spread of the first years.  
+We can analyse this further by creating a summary table and visualisation while grouping by the year. 
+
+### Spread of ratings
 
 ```{r}
 standard_deviations <- 
@@ -128,24 +132,30 @@ standard_deviations <-
 standard_deviations
 ```
 
-We seem to see that the standard deviation of rating seems to be decreasing as time passes. 
+We seem to see that the standard deviation of rating seems to be decreasing as time passes. This is more clearly seen when you visualise the trend.  
+
+I have included the number of reviews per year here using the `size` aesthetic of `geom_point` to give an idea of the sample size for each year as time passes. 
 
 ```{r}
-
-standard_deviations %>%
+standard_deviations %>% # Use our previous summary table
   ggplot(aes(review_date, sd)) + 
-  geom_point(aes(size = count)) + 
+  geom_point(aes(size = count)) + # Change point size depending on number of reviews
   geom_line(size = .5) + 
   theme_minimal() + 
   scale_x_date(date_breaks = '1 year', date_labels = '%Y') + 
   scale_size(breaks = seq(0,250,50), name = 'Number of ratings') + 
   labs(x = 'Date', 
-       y = 'Standard deviation of ratings')
+       y = 'Standard deviation of ratings', 
+       title = 'Standard deviation of review ratings over time')
 ```
+
 Upon visualisation of the data we can see that 2017 might simply have a smaller spread due to the smaller number of ratings that have been taken in that year. As the number of ratings taken in the year increases, we say see it rise to near that of the previous 6/7 years, although there does appear to be a definite downward trend, implying that reviewers are giving less extreme scores. 
 
+### Extreme ratings
+
 ```{r}
-low_scores <- full_data %>% group_by(review_date) %>%
+low_scores <- full_data %>% 
+  group_by(review_date) %>%
   summarise(less_than_2.5 = sum(rating < 2.5), count = n(), perc = round(less_than_2.5 / count, 2))
 
 low_scores
@@ -153,6 +163,7 @@ low_scores
 
 Having a closer look, by year, at the reviews that were given a rating of less than 2.5, you can clearly see that the number of those poor scores is going down, despite the number of reviews going up! 18% of reviews in 2006 (13/72) where less than 2.5, while only 5 reviews fell below that threshold since 2015!
   
+Once again, plotting this trend makes it much easier to digest. 
   
 ```{r}
 low_scores %>%
@@ -161,24 +172,28 @@ low_scores %>%
   scale_x_date(date_breaks = '1 year', date_labels = '%Y') + 
   labs(x = 'Date', 
        y = 'Percentage',
-       title = 'Percentage of scores below 2.5 by year')
+       title = 'Percentage of ratings below 2.5 by year')
 
 ```
   
-### Ratings over time
-Are reviewers getting more generous in recent years?
+### Frequent ratings over time
+So we have established that the spread of the ratings is getting smaller, and reviewers are giving less low scores below 2.5.  
+
+We can further visualise these features of the data by exploring other plots. 
+
 ```{r}
 full_data %>%
   ggplot(aes(review_date, rating)) + 
   geom_count(aes(colour = ..n..)) + 
-  geom_line(data = avg_ratings, aes(review_date, avg_rating), colour = 'red') +
+  geom_line(data = avg_ratings, aes(review_date, avg_rating), colour = 'red') + # Use average ratings table from earlier
   scale_x_date(date_breaks = '1 year', date_labels = '%Y') + 
   scale_size_continuous(name = 'Count') + scale_color_continuous(name = 'Count') + 
-  coord_cartesian(ylim = c(0,5)) + 
-  theme_minimal() + labs(x = 'Review year', y = 'Rating')
+  expand_limits(y = 0) + # Expand limits to include 0
+  theme_minimal() + 
+  labs(x = 'Review year', y = 'Rating')
 ```
 
-Reviewers don't appear to be more generous, or as harsh, considering our previous analysis. 
+We can see that the spread of the reviews is definitely narrowing, with the lower tail retracting and reviews now generally falling between 3 and 4 in 2015 onwards.
   
 ### Company location
 Does the company location make a difference to the quality of the product? 
