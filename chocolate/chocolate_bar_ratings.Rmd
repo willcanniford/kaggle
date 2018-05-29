@@ -39,17 +39,21 @@ The data here is provided to us in a csv file and kept in the input directory, w
 full_data <- read_csv('./input/flavors_of_cacao.csv')
 ```
 
-Now that we have read in the data we should explore the data set to try and get an understanding about how the data is stored for us. 
+Now that we have read in the data we should explore the data set to try and get an understanding about how the data is stored for us.   
+
+We can check the dimensions of the data. 
 ```{r}
-# Check the dimensions of the data
 dim(full_data)
-# Check the column names
+```
+We seem to have just under 1,800 observations, or chocolates, and 9 variables. We can check the variables that we have by checking the column names of the data. 
+
+```{r}
 names(full_data)
 ```
 
 If we look at the column names we can see that they contain spaces as well as some line breaks, which definintely isn't good, so I will remove them using `gsub`. 
 ```{r}
-# Removing the spaces and line breaks
+# Remove and replace spaces and line breaks
 names(full_data) <- tolower(gsub(pattern = '[[:space:]+]', '_', names(full_data)))
 
 # View the new column names 
@@ -67,7 +71,7 @@ It looks like the first row of the data is duplicated from the header, so I will
 ```{r}
 full_data <- full_data[-1,] # Remove first row
 ```
-  
+
 Another piece of data cleaning that we should do is remove the _%_ sign from the cocoa_percent column. This will mean that we can have the column as numeric, which makes much more sense than having it as a string or category. 
   
 ```{r}
@@ -100,6 +104,8 @@ avg_ratings <- full_data %>%
 # Print our new table
 avg_ratings
 ```
+  
+Here we have created a basic summary table of the average ratings and the number of reviewed observations for each year in the range of our data.   
 
 ***
 
