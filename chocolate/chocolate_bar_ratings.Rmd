@@ -1,5 +1,5 @@
 ---
-title: "Chocolate Bar Ratings: Data Visualisations"
+title: "Chocolate Bar Ratings: EDA"
 author: "Will Canniford"
 output: 
   html_document:
@@ -24,7 +24,7 @@ library(lubridate)
 ***
 
 # Load and clean the data
-Firstly, let's read in the packages that I am going to be using.
+Firstly, let's read in the packages that I am going to be using during the analysis.
 ```{r eval=FALSE}
 library(tidyverse)
 library(ggplot2)
@@ -247,8 +247,6 @@ companies <- full_data %>%
   group_by(company) %>% 
   filter(n() > 10) %>% 
   mutate(avg = mean(rating))
-
-head(companies)
 ```
 
 By plotting the count of reviews for ratings using the `size` aesthetic again, we are also able to see the distribution of scores for the companies.
@@ -294,25 +292,33 @@ Some appear to have shown improvements, but such increases can probably just be 
 
 ***
   
-### Cocoa percent and rating
-More cocoa = higher rating? 
+## Cocoa percent 
+Let's investigate to see whether there is a relationship between cocoa percentage and the chocolate's rating. 
 ```{r}
 full_data %>%
   ggplot(aes(x = cocoa_percent, y = rating)) +
   geom_jitter(alpha = .75) + 
   coord_cartesian(ylim = c(0,5)) +
   labs(x = 'Cocoa percentage', y = 'Rating') + 
-  theme_minimal()
+  theme_minimal() + 
+  geom_smooth(method = 'lm', se = FALSE, col = 'red')
 ```
   
-### Broad bean origin
+There doesn't appear to be any relationship. 
+  
+***
+  
+## Broad bean origin
 ```{r}
 # Look at the origins
 unique(full_data$broad_bean_origin)
 
 # Remove the ratings that don't have broad bean origins
 beans <- full_data %>% filter(!is.na(broad_bean_origin), !nchar(broad_bean_origin) < 2)
+```
 
+### Most frequent bean origin
+```{r}
 # Most frequent broad bean origin
 beans %>% 
   group_by(broad_bean_origin) %>% 
@@ -325,6 +331,7 @@ beans %>%
   labs(x = 'Bean origin', y = 'Count')
 ```
 
+### Origin and ratings
 ```{r}
 # There doesn't appear to be any relationship between broad bean origin and rating however
 beans %>% 
@@ -339,7 +346,7 @@ beans %>%
 ```
 
   
-### Companies and beans
+### Companies and bean origin heatmap
 ```{r fig.width=10 }
 # Use the subset with the most active companies to generate heatmap of interactions between companies and the bean origin
 companies %>% 
@@ -357,5 +364,5 @@ companies %>%
   labs(x = 'Broad bean origin', y = 'Company')
 ```
 
-Thanks for taking the time to have a look at my visualisations.
-I would greatly appreciate any feedback or advice. 
+Thanks for taking the time to have a look at my analysis and visualisations.   
+I am still looking to improve this kernel and would greatly appreciate any feedback or advice that you could share with me. 
