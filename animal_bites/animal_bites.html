@@ -232,7 +232,8 @@ $(document).ready(function () {
 <span class="kw">library</span>(stringr)
 <span class="kw">library</span>(lubridate)
 <span class="kw">library</span>(gridExtra)</code></pre></div>
-<p>All of our data is contained within a single spreadsheet, so we can simply read that in using the <code>read_csv</code> function from the <code>readr</code> package.</p>
+<p>All of our data is contained within a single spreadsheet, so we can simply read that in using the <code>read_csv</code> function from the <code>readr</code> package.<br />
+<em>Please note: I have specified the column types for two of the columns: <code>BreedIDDesc</code> and <code>release_date</code>. This is because I was encountering a problem where those columns were being read in as col_logical and nothing was parsing.</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">full_data &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">'./input/Health_AnimalBites.csv'</span>, <span class="dt">col_types =</span> <span class="kw">list</span>(<span class="dt">BreedIDDesc =</span> <span class="kw">col_character</span>(), <span class="dt">release_date =</span> <span class="kw">col_datetime</span>()))</code></pre></div>
 <p>Let’s have a glimpse at the data to get an idea about what we are working with.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">glimpse</span>(full_data)</code></pre></div>

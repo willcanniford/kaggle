@@ -63,7 +63,8 @@ library(gridExtra)
 ```
 
 
-All of our data is contained within a single spreadsheet, so we can simply read that in using the `read_csv` function from the `readr` package. 
+All of our data is contained within a single spreadsheet, so we can simply read that in using the `read_csv` function from the `readr` package.  
+*Please note: I have specified the column types for two of the columns: `BreedIDDesc` and `release_date`. This is because I was encountering a problem where those columns were being read in as col_logical and nothing was parsing.*
 ```{r, message=FALSE, warning=FALSE}
 full_data <- read_csv('./input/Health_AnimalBites.csv', col_types = list(BreedIDDesc = col_character(), release_date = col_datetime()))
 ```
