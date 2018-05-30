@@ -1,0 +1,131 @@
+---
+title: "Stack Overflow 2018 Developer Survey: Initial Insights and Analysis"
+author: "Will Canniford"
+output: 
+  html_document:
+    number_sections: false
+    toc: true
+    toc_depth: 6
+    highlight: tango
+    theme: yeti
+    code_folding: show
+    df_print: kable
+---
+
+*** 
+
+# Introduction
+We have the data for the Stack Overflow 2018 Developer Survey, with each row corresponding to one respondent to the survey and the columns representing the questions that were asked: `survey_results_public.csv`.  
+We are also provided with another file that is the schema for the survey: `survey_results_schema.csv`. This provides us with the full questions that were asked. 
+
+***
+
+# Loading in the data
+## Packages
+Let's start by loading the packages that we are going to use throughout the analysis. I will also set the theme for my graphics so that I don't have to include the code each time.   
+```{r "load_packages", message=FALSE, error=FALSE}
+library(tidyverse)
+theme_set(theme_minimal())
+```  
+
+## The files
+I will read in both files using `read_csv` from the `readr` package. I will keep the column specification parsing default to allow for automatic typing. 
+```{r "load_files", message=FALSE, error=FALSE}
+schema <- read_csv('./input/survey_results_schema.csv')
+replies <- read_csv('./input/survey_results_public.csv')
+```
+  
+  
+## Initial structure exploration
+Now that we have read the files in, we can begin to explore them to find out more about the structure of the data that we are going to be working with. 
+
+```{r "check_replies_dimensions"}
+dim(replies) # Get the dimensions of the replies data
+```
+It looks as though we have almost 100,000 respondents to the survey and comfortably over 100 questions in the survey.  
+
+```{r}
+head(replies, n = 1) # View first row
+```
+This shows us that we have a respondent id column currently named `Respondent`. This also shows us that all the column titles appear to be in ___CamelCase___ of sorts.  
+Given the way the single row has displayed indicates that some of the answers are quite long and are wrapping badly to make displaying the data quite space-filling.  
+
+*So does that mean that there are 128 questions?*
+```{r "schema_dimensions"}
+dim(schema) # Dimensions of the schema 
+```
+129 rows definitely aligns with the 129 columns that we have in the `replies` data. 
+
+```{r "show_head_schema"}
+head(schema, n = 5)
+```
+The first row is an explanation of the id column that we had already spotted, so I'm going to assume that there were 128 questions in the survey, or at least 128 opportunities to collect information from the respondent.   
+## Missing values 
+Let's have a quick look at the missing values in the data using the `map` functions from the `purrr` package. 
+
+```{r "map_missing_values"}
+map_df(replies, ~ sum(is.na(.))) %>%
+  gather("question", "n_missing") %>%
+  mutate(perc_answered = (nrow(replies) - n_missing) / nrow(replies) * 100)
+```  
+It looks as though the survey was mainly made of optional questions. As we would expect the `Respondent` column has a 100% complete rate, as do the `Hobby` and `OpenSource` questions.  
+
+The other things that jump out are the longer questions such as `AssessJob` and `AssessBenefits`. These have exactly the same number of missing values from the respondents, making us think that they represent effectively one larger question, rather than a group of questions. 
+
+***
+
+# Insights 
+## Represented countries 
+*What are the most represented countries among our respondents?*  
+We can have a look using the `Country` column from the `replies` data. I will plot the 10 countries that the respondents listed as their country. 
+```{r "top_10_countries", message=FALSE}
+top_10_countries <- replies %>%
+  group_by(Country) %>%
+  summarise(n_respondents = n()) %>%
+  arrange(desc(n_respondents)) %>%
+  top_n(10)
+
+ggplot(top_10_countries, aes(reorder(Country, n_respondents), n_respondents)) + 
+  geom_col() + 
+  coord_flip() + 
+  labs(x = 'Country', y = 'Number of respondents', title = 'Respondent count by country')
+```  
+
+We see that the United States leads the way with most reponses, followed by India, Germany and the United Kingdom.  
+
+## Age of respondents
+Let's move on and have a look at the `Age` of the respondents that we have.  
+
+```{r "age_structure"}
+class(replies$Age) # Let's see what type of variable Age is
+```
+We can see that age isn't stored as a numeric variable, which would have been my first thought but it is stored as a character. Let's see the type of responses that were given. 
+
+```{r}
+unique(replies$Age)
+```
+
+We are looking at categorical predefined bins that they provided, probably as a select box for the respondents.
+
+```{r "age_plotting"}
+ggplot(replies, aes(Age, fill = factor(Age))) + 
+  geom_bar() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(y = 'Number of respondents', title = 'Age of respondents') + 
+  guides(fill = FALSE)
+```
+  
+We can see that the most common age group of respondents is actually `NA`. Perhaps developers just aren't keen to give away how old they are.  
+The respondents are generally dominated with those developers under the age of 35. 
+
+## Developer lifestyle
+
+## Monitor usage
+
+## Programming languages 
+
+
+   
+***
+# Initial conclusions
+
