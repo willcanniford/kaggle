@@ -320,48 +320,59 @@ If we were going to build a model to predict the rating of the chocolate then we
 ***
   
 ## Broad bean origin
+Let's have a look at the unique origins that are listed in the dataset. This is easily achieved using the `unique` function. 
 ```{r}
-# Look at the origins
+# Look at unique origins
 unique(full_data$broad_bean_origin)
+```
 
-# Remove the ratings that don't have broad bean origins
-beans <- full_data %>% filter(!is.na(broad_bean_origin), !nchar(broad_bean_origin) < 2)
+Since we are looking at the broad bean origin during this part of the analysis we are going to want to remove those rows that don't appear to have a known bean origin.  
+Using the unique values above we are able to look through the origins that are included in the data set and use that information to filter all the observations accordingly. 
+```{r}
+beans <- full_data %>% 
+    filter(!is.na(broad_bean_origin),     # Remove those with NA values
+           !nchar(broad_bean_origin) < 2) # Remove those where the origin is too short to be a realistic palce
 ```
 
 ### Most frequent bean origin
+Now that we have filtered the data (`beans`) to include just those observations with broad bean origins we are able to working out which origins occur the most frequently, or are the most widely used in these chocolates. 
 ```{r}
 # Most frequent broad bean origin
 beans %>% 
-  group_by(broad_bean_origin) %>% 
-  filter(n() > 10) %>% 
-  mutate(count = n()) %>%
+  group_by(broad_bean_origin) %>% # Group by origin
+  filter(n() > 10) %>% # Limit to those with at least 10 observations
+  mutate(count = n()) %>% # Add the count column
   ggplot(aes(x = reorder(broad_bean_origin, count))) + 
   geom_bar() + 
   coord_flip() + 
   theme_minimal() + 
-  labs(x = 'Bean origin', y = 'Count')
+  labs(x = 'Bean origin', y = 'Count', title = 'Most frequently used broad bean origins')
 ```
+  
+Looking at this simple graph we are able to see that the most popular broad bean origins are Venezuela, Ecuador and Peru. Madagascar, probably more famous for its vanilla, is in fourth place.  
 
 ### Origin and ratings
+*Does the origin of the bean have a noticeable impact on the rating of the chocolate?*  
+We can visualise the answer to this question by looking at the statistics of the ratings when they are grouped by their broad bean origin.  
 ```{r}
-# There doesn't appear to be any relationship between broad bean origin and rating however
 beans %>% 
   group_by(broad_bean_origin) %>% 
-  filter(n() > 10) %>% 
+  filter(n() > 10) %>% # Keep only those with more than 10 observations
   mutate(count = n()) %>%
   ggplot() + 
   geom_boxplot(aes(x = broad_bean_origin, y = rating)) + 
   theme_minimal() + 
   theme(axis.text.x = element_text(angle = 75, hjust = 1)) + 
   labs(x = 'Broad bean origin', y = 'Rating')
-```
+```  
+Having seen the boxplot, we can see that there doesn't appear to be any relationship between broad bean origin and rating. The company or the maker that is producing the product itself must be a more important indicator of the overall rating of the chocolate. 
 
   
 ### Companies and bean origin heatmap
+We can use the subset which contains only the companies with the most observations to generate a heatmap showing the interactions between company and broad bean origin.
 ```{r fig.width=10 }
-# Use the subset with the most active companies to generate heatmap of interactions between companies and the bean origin
 companies %>% 
-  filter(!is.na(broad_bean_origin), !nchar(broad_bean_origin) < 2) %>%
+  filter(!is.na(broad_bean_origin), !nchar(broad_bean_origin) < 2) %>% 
   group_by(company, broad_bean_origin) %>%
   summarise(count = n()) %>%
   filter(count > 0) %>%
@@ -373,7 +384,10 @@ companies %>%
   theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 5)) +
   theme(axis.text.y = element_text(size = 5)) + 
   labs(x = 'Broad bean origin', y = 'Company')
-```
+```  
+
+We can see that there are only a few bright spots on what is a quite busy plot. The popular locations for broad bean origin make the vertical straight lines on the plot.  
+You can see clear vertical lines at Venezuela, Peru and Ecuador as we would expect. 
 
 Thanks for taking the time to have a look at my analysis and visualisations.   
 I am still looking to improve this kernel and would greatly appreciate any feedback or advice that you could share with me. 
