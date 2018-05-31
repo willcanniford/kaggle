@@ -315,8 +315,34 @@ summary(model)
   
 With an adjusted R-squared of 0.02662 it is fair to say that this isn't a very good model, but there is a relationship between the rating and the cocoa_percent, it just isn't the most informative. The negative slope implies to us that the higher the cocoa_percent then the lower the rating of the chocolate.  
 
-If we were going to build a model to predict the rating of the chocolate then we would definitely have to take more variables into consideration. 
-  
+If we were going to build a model to predict the rating of the chocolate then we would definitely have to take more variables into consideration.  
+
+### Considering time with predictions
+We have already seen the impact that time has had on predictions. We can see that the spread of the ratings has decreased as time has passed. Perhaps factoring this into consideration will help us improve our prediction power.  
+
+```{r}
+ggplot(full_data, aes(x = cocoa_percent, y = rating, group = factor(year(review_date)))) +
+  geom_jitter(alpha = .75) + 
+  coord_cartesian(ylim = c(0,5)) +
+  labs(x = 'Cocoa percentage', y = 'Rating') + 
+  theme_minimal() + 
+  geom_smooth(method = 'lm', se = FALSE, aes(colour = factor(year(review_date)))) + 
+  scale_colour_discrete(name = 'Review year')
+```  
+
+We can see how the slope of the line changes each year. Let's see how adding year to the linear predictor impacts the quality of our model.  
+
+```{r}
+model <- lm(formula = rating ~ cocoa_percent + factor(year(review_date)), 
+            data = full_data)
+
+summary(model)
+```  
+
+This shows us that some of the years have a 'signficant' impact on the response variable, but overall the impact isn't as substantial as we might hope for.  
+
+We can note that the R-squared value has risen from **0.02662** to **0.04097** so it is in the right direction but still pretty awful.  
+
 ***
   
 ## Broad bean origin
@@ -394,6 +420,7 @@ You can see clear vertical lines at Venezuela, Peru and Ecuador as we would expe
 - Over time the average rating isn't increasing but the instances of extreme ratings is descreasing, resulting in a smaller spread of ratings
 - The country of manufacter doesn't appear to have a large impact on rating, but both the maker and company can be seen to impact the average rating of a chocolate
 - There isn't a strong relationship between the cocoa percent and rating of the chocolate. Fitting a linear model showed us that we would need to include more features to build a good prediction model
+    + The addition of year to the model as a factor improved the model, but it is still poor
 - Broad bean origin seems to be well represented by *the big five*:
     + Venezuela
     + Ecuador
