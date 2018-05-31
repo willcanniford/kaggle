@@ -137,6 +137,83 @@ The respondents are generally dominated with those developers under the age of 3
 
 ***
 
+## Coding experience 
+Also included in the survey is information about what stage in their career the respondents are, and what sort of experience they have with programming.  
+
+Just a few of the variables that relate to this area are: `YearsCoding`, `YearsCodingProf`, `UndergradMajor` and `Employment`
+
+Let's have a look at the variables that related to the number of years that the respondent has been coding (`YearsCoding` and `YearsCodingProf`).  
+
+```{r 'initial_coding_summaries' }
+summary(replies$YearsCoding)
+summary(replies$YearsCodingProf)
+```  
+
+So they are both character classes, so this probably means that this was a select box in the survey rather than a numeric input.  
+
+```{r 'initial_coding_prof_summaries' }
+unique(replies$YearsCoding)
+unique(replies$YearsCodingProf)
+```  
+
+So it looks as though both the variables have the same binned categories.  
+
+```{r}
+replies %>%
+  filter(!is.na(YearsCoding)) %>% # Remove blank respondents
+  group_by(YearsCoding) %>% # Group by category
+  summarise(count = n()) %>%
+  ggplot(aes(reorder(YearsCoding, desc(count)), count, fill = factor(YearsCoding))) + 
+  geom_col() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  guides(fill = FALSE) + 
+  labs(x = 'Years coding', y = 'Count')
+```  
+
+It shows us that the majority of the respondents have been coding for more than 3 years, but how long have they been professionally coding? 
+
+```{r}
+replies %>%
+  filter(!is.na(YearsCodingProf)) %>% # Remove blank respondents
+  group_by(YearsCodingProf) %>% # Group by category
+  summarise(count = n()) %>%
+  ggplot(aes(reorder(YearsCodingProf, desc(count)), count, fill = factor(YearsCodingProf))) + 
+  geom_col() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  guides(fill = FALSE) + 
+  labs(x = 'Years coding', y = 'Count')
+```  
+So they have been professional for around 0-2 years in the majority. I suppose that makes sense, that those who have been coding for slightly longer then get their first professional coding job once they have some experience under their belt. However, we aren't comparing the two variables against one another... 
+
+```{r}
+# Define levels for each variable
+YearsLevels = c("0-2 years", "3-5 years","6-8 years", "9-11 years", "12-14 years", "15-17 years", "18-20 years", "21-23 years", "24-26 years", "27-29 years", "30 or more years") 
+
+# Define order to factor variables
+replies$YearsCoding <- factor(replies$YearsCoding, levels = YearsLevels, ordered = TRUE) 
+replies$YearsCodingProf <- factor(replies$YearsCodingProf, levels = YearsLevels, ordered = TRUE) 
+
+replies %>%
+  select(YearsCoding, YearsCodingProf) %>%
+  filter(complete.cases(.)) %>%
+  group_by(YearsCoding, YearsCodingProf) %>%
+  summarise(count = n()) %>%
+  ggplot(aes(YearsCoding, YearsCodingProf)) + 
+    geom_tile(aes(fill = count), alpha = .7) + 
+    scale_fill_distiller(name = 'Count', palette = 'Spectral') + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  coord_equal() + 
+  labs(x = 'Years Coding', y = 'Years Coding Professionally', title = 'Comparing total and professional coding years')
+```  
+
+This heatmap shows us the combinations of `YearsCoding` and `YearsCodingProf`. We could expect the majority of the values to be below the diagonal as total years coding should outweight those where it has been done professionally.   
+
+We see a clear fade below the line where people may have spent a couple of years coding before going professional. 
+
+The top value is 0-2 years professionally and 3-5 years overall, which would probably be that sweet zone where you are using Stack Overflow a lot in your job to troubleshoot issues that you might not have come across when you were coding as a hobby. 
+
+***
+
 ## Monitor usage
 `NumberMonitors` is a variable that seems to indicate how many monitors that the repsondent uses. This could be interresting to look at as it is something that I talk with colleagues about.  
 Let's firstly just check what question was asked by looking at the `schema` data.  
@@ -295,7 +372,7 @@ Just from looking at that, Go looks like it is set for a grow in popularity. The
 ## Upcoming sections  
 - Developer lifestyle
 - Salary
-- Experience and Roles
+- Roles
 
 ***  
   
