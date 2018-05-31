@@ -1,5 +1,5 @@
 ---
-title: "Stack Overflow 2018 Developer Survey: Initial Insights and Analysis"
+title: "Stack Overflow 2018 Developer Survey: Early Insights"
 author: "Will Canniford"
 output: 
   html_document:
@@ -11,6 +11,10 @@ output:
     code_folding: show
     df_print: kable
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = 'center')
+```
 
 *** 
 
@@ -60,6 +64,7 @@ dim(schema) # Dimensions of the schema
 head(schema, n = 5)
 ```
 The first row is an explanation of the id column that we had already spotted, so I'm going to assume that there were 128 questions in the survey, or at least 128 opportunities to collect information from the respondent.   
+
 ## Missing values 
 Let's have a quick look at the missing values in the data using the `map` functions from the `purrr` package. 
 
@@ -93,6 +98,18 @@ ggplot(top_10_countries, aes(reorder(Country, n_respondents), n_respondents)) +
 
 We see that the United States leads the way with most reponses, followed by India, Germany and the United Kingdom.  
 
+*How many countries are represented in these survey respondents?*  
+
+```{r}
+replies %>% 
+  filter(!is.na(Country)) %>% 
+  summarise(unique = n_distinct(Country)) %>% 
+  '$'(unique)
+```  
+183 countries are represented!  
+
+***
+
 ## Age of respondents
 Let's move on and have a look at the `Age` of the respondents that we have.  
 
@@ -116,16 +133,171 @@ ggplot(replies, aes(Age, fill = factor(Age))) +
 ```
   
 We can see that the most common age group of respondents is actually `NA`. Perhaps developers just aren't keen to give away how old they are.  
-The respondents are generally dominated with those developers under the age of 35. 
+The respondents are generally dominated with those developers under the age of 35.  
 
-## Developer lifestyle
+***
 
 ## Monitor usage
+`NumberMonitors` is a variable that seems to indicate how many monitors that the repsondent uses. This could be interresting to look at as it is something that I talk with colleagues about.  
+Let's firstly just check what question was asked by looking at the `schema` data.  
+
+```{r}
+schema %>% filter(Column == 'NumberMonitors')
+```  
+*_How many monitors are set up at your workstation?_*  
+
+It seems to be what we had imagined what a variable called `NumberMonitors` would contain.  
+
+```{r}
+glimpse(replies$NumberMonitors)
+```  
+
+We are working with a character column, although the choices are all numeric. `NA` values seem to be littered throughout as well, perhaps those that didn't answer all the questions deemed this one *"skippable"*.  
+
+```{r "monitor_bar_graph", message=FALSE, error=FALSE, warning=FALSE }
+monitors <- as_tibble(as.numeric(replies$NumberMonitors)) 
+summary(monitors)
+```  
+We can see that the number of `NA` values increased, I will investigate those at a later date.  
+
+```{r message=FALSE, error=FALSE, warning=FALSE}
+ggplot(monitors, aes(value, fill = factor(..x..))) + 
+  geom_bar() + 
+  labs(x = 'Number of workstation monitors', y = 'Count', title = 'Number of workstation monitors') + 
+  guides(fill = FALSE)
+```
+  
+We seem to have a strong majority at 2 monitors. I wonder if this takes the form of the laptop screen and then one additional monitor?  
+
+Of those respondents with 1 screen at that workstation, this might mean that they are working with desktop computers that already have a single large screen, so another isn't required.  
+
+***
 
 ## Programming languages 
+### Currently used languages 
+Let's have a look at the programming languages that the respondents are currently using by having a look at the `LanguageWorkedWith` in the `replies` data. 
 
+Let's see what format the data is kept in.
+```{r}
+head(unique(replies$LanguageWorkedWith), n = 5)
+```  
+So we have a character field where the languages that are being used are separated by a semi-colon. We need to find a way to separate those languages so that we are able to count them and produce a summary graph.  
 
+`stringr` is a good place to start. 
+
+```{r message=FALSE, error=FALSE, warning=FALSE}
+current_languages <- unlist(str_split(replies$LanguageWorkedWith, ';'))
+most_popular_languages <- as_tibble(table(current_languages)) %>% 
+  arrange(desc(n)) 
+
+head(most_popular_languages, n = 10)
+```  
+It looks like Javascript is the most currently used  languages. Let's plot them to get a better view of the lead.  
+
+```{r message=FALSE, error=FALSE, warning=FALSE}
+most_popular_languages %>% 
+  top_n(15) %>%
+  ggplot(aes(reorder(current_languages, n), n, fill = n)) + 
+  geom_col() + 
+  labs(x = 'Programming language', y = 'Count', title = 'Currently used programming languages') + 
+  coord_flip() +
+  scale_fill_continuous(name = 'Count')
+```  
+  
+Looks like web developers could represent many of the respondents with JavaScript, HTML, CSS and SQL leading the way for currently used langauges. 
+
+### Most desired programming languages
+The survey also asked which languages developers wanted to use on future projects. This could be a good indication about future coding trends and tools that developers are going to use.  
+
+Let's first have a look at the column to make sure that the format is the same as `LanguageWorkedWith`.
+
+```{r}
+head(replies$LanguageDesireNextYear, n = 4)
+```
+
+Yes that looks fine. We can reuse our code then to produce a similar plot as the one for `LanguageWorkedWith`.
+
+```{r message=FALSE, error=FALSE, warning=FALSE}
+future_languages <- unlist(str_split(replies$LanguageDesireNextYear, ';'))
+most_desired_languages <- as_tibble(table(future_languages)) %>% 
+  arrange(desc(n)) 
+
+head(most_desired_languages, n = 10)
+```  
+
+Well it certainly looks like Javascript is here to stay! It tops the list of top languages currently worked with, and those that people desire to work with next year. Python is a climber as well, this might be suggestive of the growing data scene and the powers of python where that is concerned.  
+
+PHP has dropped out of the top 10 list, showing developers apparent dislike of the language, but don't worry because it appears in the visualisation. 
+
+```{r message=FALSE, error=FALSE, warning=FALSE}
+most_desired_languages %>% 
+  top_n(15) %>%
+  ggplot(aes(reorder(future_languages, n), n, fill = n)) + 
+  geom_col() + 
+  labs(x = 'Programming language', y = 'Count', title = 'Most desired programming languages') + 
+  coord_flip() +
+  scale_fill_continuous(name = 'Count', high = '#f1f442', low = '#d60e0e')
+``` 
+
+### Language risers and fallers 
+Let's see if we can investigate both the summaries that we have created at the same time to see if we can imply which languages are on the rise and which are falling away in their desirability. 
+
+We can join the tables together using the language as the key in the two tables and by using the `left_join` function from `dplyr`.  
+
+```{r}
+joined_languages <- left_join(most_popular_languages, most_desired_languages, by = c('current_languages' = 'future_languages')) %>%
+    rename(language = current_languages, currently_used = n.x, desired = n.y)
+    
+head(joined_languages, n = 10) # Top 10 rows of our newly joined data frame
+```
+
+The count sizes are drastically different between the two questions. Let's have a look and see whether one question was answered particularly more than the other.  
+
+```{r}
+replies %>%
+    select(LanguageWorkedWith, LanguageDesireNextYear) %>%
+    map_df(~ sum(is.na(.)))
+```
+
+It does seem that people were happier to say which languages they currently worked with compared to those that they might like to work with, or maybe they just haven't made their mind up yet.  
+
+Another possible reason for this is that people didn't click the language from the first part (current languages) in the second part, indicating that they wanted to continue to use them in the future; this is stated in the question:  
+
+``` {r}
+filter(schema, Column == 'LanguageDesireNextYear') %>% '$'(QuestionText)
+```
+
+```{r}
+joined_languages %>%
+    top_n(10) %>%
+    gather('status', 'count', -language) %>%
+    ggplot(aes(reorder(language, count), count, fill = language)) + 
+        geom_col() + 
+        facet_grid(~ status) + 
+        scale_fill_discrete(name = 'Language') + 
+        labs(x = NULL, y = 'Count') + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```  
+
+Just from looking at that, Go looks like it is set for a grow in popularity. The people that desire to use it is way above those that currently do.  
+  
    
 ***
-# Initial conclusions
 
+# Initial conclusions
+- This is a vast survey with many more explorations to be had
+- There are 183 countries represented by this survey, with United States being where most of the respondents are from
+- The most common age group is 25-34 years
+- 1 or 2 monitors at the workstation are the most common states, with some people clocking in at 4 screens  
+- It seems that web developers could lead the way with Stack Overflow responses based on the top 4 used current programming languages
+- JavaScript is popular now and is unlikely to fade as it topped the most desired programming language as well as the currently most used
+
+## Upcoming sections  
+- Developer lifestyle
+- Salary
+- Experience and Roles
+
+***  
+  
+I would love to hear any feedback or advice that anyone has about what I have done here to start, and if you enjoyed please consider upvoting the kernel!  
+Thanks for taking the time to have a look at my analysis. 
