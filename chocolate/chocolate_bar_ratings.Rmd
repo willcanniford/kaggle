@@ -115,7 +115,7 @@ Here we have created a basic summary table of the average ratings and the number
 ```{r}
 ggplot(full_data, aes(x = rating, fill = as.factor(review_date))) + 
   geom_density(alpha = .5) + 
-  facet_wrap(~ as.factor(review_date)) + 
+  facet_wrap(~ as.factor(year(review_date))) + 
   guides(fill = FALSE) + labs(x = 'Rating', y = 'Density')
 ```
 
@@ -404,5 +404,5 @@ You can see clear vertical lines at Venezuela, Peru and Ecuador as we would expe
   
 ***
 
-Thanks for taking the time to have a look at my analysis and visualisations.   
+Thanks for taking the time to have a look at my analysis and visualisations, if you enjoyed it or learned something then please feel free to upvote the kernel ;)   
 I am still looking to improve this kernel and would greatly appreciate any feedback or advice that you could share with me. 
