@@ -1,5 +1,5 @@
 ---
-title: "Stack Overflow 2018 Developer Survey: Early Insights"
+title: "Stack Overflow 2018 Developer Survey: Insights & Visualisations"
 author: "Will Canniford"
 output: 
   html_document:
@@ -80,6 +80,39 @@ The other things that jump out are the longer questions such as `AssessJob` and 
 ***
 
 # Insights 
+## Hobbyists and contributors 
+There are two questions in particular that deal with these titles: `Hobby` and `OpenSource`. If we have a look at the scheme then we are able to see exactly what the questions were:
+
+```{r 'hobby_open_source_questions'}
+schema %>% filter(Column %in% c('Hobby', 'OpenSource'))
+```
+
+We can use these to show how many of the respondents are coding as a hobby and contributing to open source projects.  
+
+```{r}
+replies %>%
+    filter(!is.na(Hobby)) %>%
+    ggplot(aes(Hobby, fill = Hobby)) + 
+        geom_bar() + 
+        labs(x = 'Do you code as a hobby?', y = 'Count') +
+        guides(fill = FALSE)
+```  
+
+It looks as though we have a large proportion of hobbyists in the data! What about contributors to open source?
+
+```{r}
+replies %>%
+    filter(!is.na(OpenSource)) %>%
+    ggplot(aes(OpenSource, fill = OpenSource)) + 
+        geom_bar() + 
+        labs(x = 'Do you contribute to open source projects?', y = 'Count') +
+        guides(fill = FALSE)
+```  
+
+There seem to be much fewer people that contribute to open source projects. Assumingly, when they are coding at home they are working on small personal projects instead. 
+
+***
+
 ## Represented countries 
 *What are the most represented countries among our respondents?*  
 We can have a look using the `Country` column from the `replies` data. I will plot the 10 countries that the respondents listed as their country. 
@@ -107,6 +140,41 @@ replies %>%
   '$'(unique)
 ```  
 183 countries are represented!  
+
+***
+
+## Current developer roles 
+We can find out what type of roles the respondents are currently in by looking at the `DevType` variable. Let's have a look at the question by querying `schema`.  
+
+```{r 'dev_type_question'}
+schema %>% filter(Column == 'DevType') %>% '$'(QuestionText)
+```
+
+It looks like we are going to be working with a multiple choice answer, so we should look at some examples to see what form the answer is stored in.  
+
+```{r 'dev_type_example'}
+replies %>% select(DevType) %>% head()
+```
+
+It seems to be stored as a string with a separator of '**;**'. We can use the `stringr` package to help us manage these answers and see what the most common dev type describes our respondents.  
+
+```{r}
+all_dev_types <- unlist(str_split(replies$DevType, ';'))
+head(all_dev_types)
+```
+
+Now that we have split the developer types from the column, we can plot to see which was the most common developer type.  
+
+```{r}
+as_tibble(table(all_dev_types)) %>%
+    ggplot(aes(reorder(all_dev_types, n), n, fill = all_dev_types)) + 
+        geom_col() +
+        coord_flip() + 
+        labs(x = 'Developer Role', y = 'Count', title = 'Most common developer roles') + 
+        guides(fill = FALSE) # Remove legend
+```  
+
+Back-end, Full-stack and Front-end developers lead the way with the roles that are used to describe what the respondents are doing. 
 
 ***
 
@@ -358,12 +426,113 @@ joined_languages %>%
 
 Just from looking at that, Go looks like it is set for a grow in popularity. The people that desire to use it is way above those that currently do.  
   
+***
+
+## AI opinions 
+The survey included some questions about artificial intelligence that I think will be very interesting to have a look at and see what current developers feel about AI.  
+
+```{r, 'find_ai_questions'}
+ai_questions <- names(replies)[str_detect(names(replies), '^AI')]
+print(ai_questions)
+
+schema %>% filter(Column %in% ai_questions) # Filter to get the full question
+```
+
+We can see that there are 4 questions about AI. They cover:
+- The danger of AI
+- The exciting aspects of AI
+- Who is responsibility of those working with advanced AI
+- The future of AI
+
+### Excitement 
+*_What do you think is the most exciting aspect of increasingly advanced AI technology?_*
+AI is a powerful tool that is pretty prominent in discussions and in the news at the moment, let's have a look and see what the respondents think are the most exciting aspects of AI. 
+
+```{r}
+replies %>% 
+    filter(!is.na(AIInteresting)) %>%  
+    group_by(AIInteresting) %>%
+    summarise(count = n()) %>%
+    ggplot(aes(reorder(AIInteresting, count), count, fill = factor(count) )) + 
+        geom_col() + 
+        geom_text(aes(label = AIInteresting, y = 500), size = 3, hjust = 0) +
+        coord_flip() + 
+        guides(fill = FALSE) + 
+        labs(x = 'Answer', y = 'Count', title = 'Exciting aspects of AI') +
+        theme(axis.text.y = element_blank()) + 
+        scale_fill_brewer(palette = 'Oranges')
+```
+
+*Increasing automation of jobs* is the most common answer here from developers by a fairly large margin.  
+
+
+### Danger 
+*_What do you think is the most dangerous aspect of increasingly advanced AI technology?_*
+
+```{r}
+replies %>% 
+    filter(!is.na(AIDangerous)) %>%  
+    group_by(AIDangerous) %>%
+    summarise(count = n()) %>%
+    ggplot(aes(reorder(AIDangerous, count), count, fill = factor(count) )) + 
+        geom_col() + 
+        geom_text(aes(label = AIDangerous, y = 500), size = 3, hjust = 0) +
+        coord_flip() + 
+        guides(fill = FALSE) + 
+        labs(x = 'Answer', y = 'Count', title = 'Dangers of AI') +
+        theme(axis.text.y = element_blank()) + 
+        scale_fill_brewer(palette = 'Reds')
+```
+
+*Algorithms making important decisions* is what concerns developers the most. Is this linked to how some people believe that AIs can be built and then left to function without human intervention to interpret the results? 
+
+
+### Responsibility 
+*_Whose responsibility is it, <u>primarily</u>, to consider the ramifications of increasingly advanced AI technology?_*
+
+```{r}
+replies %>% 
+    filter(!is.na(AIResponsible)) %>%  
+    group_by(AIResponsible) %>%
+    summarise(count = n()) %>%
+    ggplot(aes(reorder(AIResponsible, count), count, fill = factor(count) )) + 
+        geom_col() + 
+        geom_text(aes(label = AIResponsible, y = 500), size = 3, hjust = 0) +
+        coord_flip() + 
+        guides(fill = FALSE) + 
+        labs(x = 'Answer', y = 'Count', title = 'Who is responsible for advanced AI') +
+        theme(axis.text.y = element_blank()) + 
+        scale_fill_brewer(palette = 'Greens')
+```
+
+With great power comes great responsibility. *The developers or the people creating the AI* are who is responsible as far as the developers are concerned; those who make the product must be in control of what they create. A government body is second which suggests that people believe that regulations should be in place surrounding the creation of AI technology. It would have been interesting to see the results had the developers been allowed to select more than one option for these questions, similar to the `DevType` question.    
+
+### Future 
+*_Overall, what's your take on the future of artificial intelligence?_*
+   
+```{r}
+replies %>% 
+    filter(!is.na(AIFuture)) %>%  
+    group_by(AIFuture) %>%
+    summarise(count = n()) %>%
+    ggplot(aes(reorder(AIFuture, count), count, fill = factor(count) )) + 
+        geom_col() + 
+        geom_text(aes(label = AIFuture, y = 500), size = 3, hjust = 0) +
+        coord_flip() + 
+        guides(fill = FALSE) + 
+        labs(x = 'Answer', y = 'Count', title = 'The future of AI') +
+        theme(axis.text.y = element_blank()) + 
+        scale_fill_brewer(palette = 'Blues')
+```
+Generally speaking, developers are more excited about the technology than worried about the dangers that might come with it.  
    
 ***
 
 # Initial conclusions
 - This is a vast survey with many more explorations to be had
+- There are lots of people who code for a hobby, but not as many are contributing to open source projects
 - There are 183 countries represented by this survey, with United States being where most of the respondents are from
+- Respondents tend to have coded for a couple of years prior to getting their first job
 - The most common age group is 25-34 years
 - 1 or 2 monitors at the workstation are the most common states, with some people clocking in at 4 screens  
 - It seems that web developers could lead the way with Stack Overflow responses based on the top 4 used current programming languages
@@ -372,9 +541,8 @@ Just from looking at that, Go looks like it is set for a grow in popularity. The
 ## Upcoming sections  
 - Developer lifestyle
 - Salary
-- Roles
 
 ***  
   
-I would love to hear any feedback or advice that anyone has about what I have done here to start, and if you enjoyed please consider upvoting the kernel!  
+I would love to hear any **feedback or advice** that anyone has about what I have done here to start, and if you enjoyed please consider **upvoting** the kernel!  
 Thanks for taking the time to have a look at my analysis. 
