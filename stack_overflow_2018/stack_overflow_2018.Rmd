@@ -29,6 +29,7 @@ We are also provided with another file that is the schema for the survey: `surve
 Let's start by loading the packages that we are going to use throughout the analysis. I will also set the theme for my graphics so that I don't have to include the code each time.   
 ```{r "load_packages", message=FALSE, error=FALSE}
 library(tidyverse)
+library(gridExtra)
 theme_set(theme_minimal())
 ```  
 
@@ -525,6 +526,72 @@ replies %>%
         scale_fill_brewer(palette = 'Blues')
 ```
 Generally speaking, developers are more excited about the technology than worried about the dangers that might come with it.  
+ 
+***
+ 
+## Salary 
+Let's explore those questions that contain salary information about our developer respondents.  
+
+```{r message=FALSE, error=FALSE, warning=FALSE}
+schema %>% filter(Column %in% schema$Column[str_detect(schema$Column, 'Salary')])
+```
+
+We can see that we have a salary input, as well as whether that sum is to do with a weekly, monthly or yearly wage. The useful column for us is going to be the `ConvertedSalary` which is the salary information gained from the survey but *converted to annual USD salaries using the exchange rate on 2018-01-18, assuming 12 working months and 50 working weeks*.  
+
+I think this converted column is going to be easiest to use as the conversion will make the results directly comparable.  
+
+```{r message=FALSE, error=FALSE, warning=FALSE}
+converted_salaries <- replies %>% filter(!is.na(ConvertedSalary))
+
+non_log <- ggplot(converted_salaries, aes(ConvertedSalary)) + 
+    geom_histogram(bins = 50) +
+    geom_freqpoly(alpha = .25, col = 'red') +
+    labs(x = 'Salary (USD per annum)', y = 'Count', title = 'Distribution of annual salaries')
+    
+log <- ggplot(converted_salaries, aes(ConvertedSalary)) + 
+    geom_histogram(bins = 50) +
+    geom_freqpoly(alpha = .25, col = 'red') +
+    scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000, 1000000), labels = c('1', '10', '100', '1,000', '10,000', '100,000', '1,000,000')) + 
+    labs(x = 'Salary (USD per annum)', y = 'Count', title = 'Distribution of annual salaries - log scale')
+    
+grid.arrange(non_log, log)
+```
+
+There is a clear skew to the data, with lots of our salaries coming in below $250,000 per year, which definitely makes sense to me. If we put it in the log scale then we get a better view of the distribution of the converted salaries.  
+
+### By gender
+
+We can have a look at how the salary distributions between male and female respondents. There are lots of different gender options for this survey, but *Female* and *Male* have the most results so I will confine my analysis to those two. 
+
+```{r message=FALSE, error=FALSE, warning=FALSE}
+converted_salaries_gender <- converted_salaries %>% filter(!is.na(Gender), Gender %in% c('Male', 'Female'))
+
+non_log_gender <- ggplot(converted_salaries_gender, aes(ConvertedSalary)) + 
+    geom_histogram(bins = 50) +
+    geom_freqpoly(alpha = .25, aes(col = Gender)) +
+    labs(x = 'Salary (USD per annum)', y = 'Count', title = 'Distribution of annual salaries by gender') + 
+    facet_wrap(~ Gender)
+    
+log_gender <- ggplot(converted_salaries_gender, aes(ConvertedSalary)) + 
+    geom_histogram(bins = 50) +
+    geom_freqpoly(alpha = .5, aes(col = Gender)) +
+    labs(x = 'Salary (USD per annum)', y = 'Count', title = 'Distribution of annual salaries by gender - log scale') + 
+    scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000, 1000000), labels = c('1', '10', '100', '1,000', '10,000', '100,000', '1,000,000')) + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    facet_wrap(~ Gender)
+    
+grid.arrange(non_log_gender, log_gender)
+```
+
+It looks as though we have a lot more information for *Male* than we do for *Female*. I think a boxplot might be more appropriate here to make more direct comparisons between the two groups.   
+
+```{r message=FALSE, error=FALSE, warning=FALSE}
+ggplot(converted_salaries_gender, aes(Gender, ConvertedSalary, fill = Gender)) + 
+    geom_boxplot() + 
+    labs(x = NULL, y = 'Salary (USD per annum)', title = 'Distribution of annual salaries by gender') +
+    scale_y_log10(breaks = c(1, 10, 100, 1000, 10000, 100000, 1000000), labels = c('1', '10', '100', '1,000', '10,000', '100,000', '1,000,000')) +
+    coord_flip()
+```
    
 ***
 
@@ -540,7 +607,6 @@ Generally speaking, developers are more excited about the technology than worrie
 
 ## Upcoming sections  
 - Developer lifestyle
-- Salary
 
 ***  
   
