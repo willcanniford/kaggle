@@ -179,6 +179,34 @@ Back-end, Full-stack and Front-end developers lead the way with the roles that a
 
 ***
 
+## Job search status
+Now that we know what the current job statuses of our respondents are, why don't we have a look at how busy the job market is looking. We can do this by looking at the `JobSearchStatus` column/response. 
+
+```{r}
+schema %>% 
+  filter(Column == 'JobSearchStatus') %>% 
+  `$`(QuestionText) # Grab the question text
+```  
+
+```{r}
+replies %>% 
+  filter(!is.na(JobSearchStatus)) %>%
+  select(JobSearchStatus) %>%
+  group_by(JobSearchStatus) %>%
+  summarise(count = n()) %>%
+  ggplot(aes(reorder(JobSearchStatus, count), count, fill = factor(count))) + 
+    geom_bar(stat = 'identity') + 
+    geom_text(aes(label = JobSearchStatus, y = 500), size = 3, hjust = 0) +
+    guides(fill = FALSE) + 
+    theme(axis.text.y = element_blank()) +
+    labs(x = 'Current job status', y = 'Count', title = 'Current job seeking status') + 
+    coord_flip()
+```  
+
+It seems that the top answer is that people would be open to new opportunities, second is that people are happy where they are and they don't want a new job, while roughly 12,500 people are actively looking for a new job.  
+
+***
+
 ## Age of respondents
 Let's move on and have a look at the `Age` of the respondents that we have.  
 
