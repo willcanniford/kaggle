@@ -373,7 +373,7 @@ ggplot(aes(linear_predictions, abv, col = abv > 0.10)) +
 There are two outliers in the data where the beer is very strong (I have highlighted them above for your reference) which could improve our results if we were to remove them. Further investigation needed. 
 
 
-### Further feature engineering with `vtreat`
+### Introducing categorical features with `vtreat`
 
 We have only used two of the variables in the dataset so far, perhaps with the addition of some new features we will be able to improvement the performance of our model. We have gone through the main features of the data and seen that they are generally categorical.  
 
