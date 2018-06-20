@@ -1,5 +1,5 @@
 ---
-title: "Craft beer: EDA and predictions"
+title: "Craft beer: EDA and predictions using caret and vtreat"
 author: "Will Canniford"
 output: 
   html_document:
@@ -252,7 +252,7 @@ Let's produce a graph that shows us the most popular beer style in the data.
 beers_breweries %>% 
   group_by(style) %>% # Group by the beer style
   summarise(count = n()) %>% # Count per group
-  filter(count > 25) %>% # Only the larger groups
+  filter(count > 25) %>% # Only the larger groups
   ggplot(aes(reorder(style, count), count)) + # Reorder the bars
   geom_col(fill = '#F9690E') + 
   theme_fivethirtyeight() +
@@ -354,15 +354,18 @@ linear_model <- train(abv ~ ibu + ounces,
 
 print(linear_model)
 ```
-Initially this model does appear to be slightly better than the random forest approach (keeping in mind that I haven't done any forest tuning, so perhaps further improvements could be done).
+Initially this model does appear to be slightly better than the random forest approach (keeping in mind that I haven't done any forest tuning, so perhaps further improvements could be done).  
+
 ```{r}
 summary(linear_model)
-```
+```  
+
+We have had some improvements using the linear model that we have applied, but still a bad performance in the grand schemes of things. 
 
 ```{r}
 # Predict using the linear model 
-beers_with_abv$linear_predictions <- predict(linear_model, beers_with_abv) 
-ggplot(beers_with_abv, aes(linear_predictions, abv, col = abv > 0.10)) + 
+beers_with_abv %>% mutate(linear_predictions = predict(linear_model, beers_with_abv)) %>% 
+ggplot(aes(linear_predictions, abv, col = abv > 0.10)) + 
   geom_point(alpha = .75, shape = 1, size = 1) + geom_abline() + 
   theme_minimal()
 ```
@@ -370,6 +373,73 @@ ggplot(beers_with_abv, aes(linear_predictions, abv, col = abv > 0.10)) +
 There are two outliers in the data where the beer is very strong (I have highlighted them above for your reference) which could improve our results if we were to remove them. Further investigation needed. 
 
 
+### Further feature engineering with `vtreat`
+
+We have only used two of the variables in the dataset so far, perhaps with the addition of some new features we will be able to improvement the performance of our model. We have gone through the main features of the data and seen that they are generally categorical.  
+
+Perhaps taking into consideration something like the beer type, or the location of manufacture would provide some extra insight and predictive power.  
+
+To do this I am going to use the `vtreat` package to one-hot encode the beer `style` variable; I will also keep the original `ibu` and `ounces` predictors that we have used in the previous models.  
+
+```{r}
+library(vtreat) # Load the library 
+
+treatment_plan <- vtreat::designTreatmentsN(beers_with_abv, 
+                                            c('style', 'ounces', 'ibu'),
+                                            outcomename = 'abv')
+```  
+
+We have created a treatment plan that we can now use to prepare the dataframe for model building. The beer `style` variable has been split into levels with one column for each level of the variable. 
+
+`ounces` and `ibu` have been kept and marked as *clean* because they are complete. We can separate those variables that we want to keep by filtering the treatment plan to get those that are either *levels*, or *clean*.  
+
+```{r}
+newvars <- treatment_plan %>% 
+  `$`(scoreFrame) %>% 
+  filter(code %in% c("clean", "lev")) %>% 
+           magrittr::use_series(varName)
+
+(treated_beers_with_abv <- prepare(treatment_plan, beers_with_abv, varRestriction = newvars)) %>% head()
+```  
+
+We now have a treated data set that we can use to, hopefully, improve our predictive power for `abv`. 
+
+```{r}
+linear_model_treated <- train(abv ~ ., 
+                      data = treated_beers_with_abv, 
+                      method = "lm", 
+                      trControl = trainControl(method = "cv", number = 10))
+
+print(linear_model_treated)
+```  
+
+RMSE is down to **0.00921506**. We definitely seem to be moving in the right direction taking the beer style into consideration. This is made even more apparent when we look at the model summary. 
+
+```{r}
+summary(linear_model_treated)
+```
+  
+```{r message=FALSE, error=FALSE, warning=FALSE}
+treated_graph <- treated_beers_with_abv %>% mutate(pred = predict(linear_model_treated, treated_beers_with_abv)) %>% 
+ggplot(aes(pred, abv)) + 
+  geom_point(alpha = .5, shape = 1, size = 1, col = 'red') + geom_abline() + 
+  theme_minimal() + 
+  labs(title = "Linear model with beer style") + 
+  coord_equal(xlim = c(0.03, 0.1))
+
+untreated_linear <- beers_with_abv %>% mutate(linear_predictions = predict(linear_model, beers_with_abv)) %>% 
+ggplot(aes(linear_predictions, abv)) + 
+  geom_point(alpha = .5, shape = 1, size = 1, col = 'blue') + geom_abline() + 
+  theme_minimal() + 
+  labs(title = "First linear model w/o beer styles") +
+  coord_equal(xlim = c(0.03, 0.1))
+
+library(gridExtra)
+grid.arrange(untreated_linear, treated_graph, nrow = 1)
+```  
+
+I feel like we can see that inclusion of beer styles to our linear model has *'tightened'* up the predictions for the lower `abv` beers, but we appear to remain just as variable towards the higher percentage beers as when we weren't including beer style in the model.  
+  
   
 ***  
 
@@ -382,3 +452,4 @@ There are two outliers in the data where the beer is very strong (I have highlig
 - American Double / Imperial IPA is the beer style for those that like their beer strong
 - There appears to be a clear relationship between the bitterness and alcohol strength of these craft beers 
 - When predicting ABV using beer size and bitterness, linear model appears the most effective of those methods tried but more work needs to be done with the predictions and comparisons
+  - When we use the beer style as a predictor, we are able to improve our `abv` predictions further
