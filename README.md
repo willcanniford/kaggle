@@ -7,8 +7,9 @@ I will try and link to the rendered code on Kaggle within each folder and projec
 
 - - - -
 
-I currently have kernels up on Kaggle:
-- [Chocolate Bar Ratings Analyis](https://www.kaggle.com/willcanniford/chocolate-bar-ratings-extensive-eda)
+My main kernels on Kaggle:
+- [Chocolate Bar Ratings: Extensive EDA](https://www.kaggle.com/willcanniford/chocolate-bar-ratings-extensive-eda)
 - [American Animal Bites Analysis](https://www.kaggle.com/willcanniford/animal-bites-analysis)
 - [Stack Overflow Developer Survey Insights](https://www.kaggle.com/willcanniford/so-developer-survey-insights-visualisations)
-- [Craft beer data analysis](https://www.kaggle.com/willcanniford/craft-beer-insights-and-predictions)
+- [Craft beer data: EDA and predictions using `caret` and `vtreat`](https://www.kaggle.com/willcanniford/eda-and-predictions-using-caret-and-vtreat)
+- [Predicting lower back pain using `caret` in R](https://www.kaggle.com/willcanniford/predicting-lower-back-pain-using-caret-in-r)
